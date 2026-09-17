@@ -3,21 +3,22 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
-import duckdb
 import pandas as pd
-from huggingface_hub import HfApi, hf_hub_download
 
 
 HF_DATASET = "saraNour/compliments-reference-db"
 
 INPUT_FILE = "phase_1/validated_products.parquet"
-
 OUTPUT_FILE = "phase_2/standardized_products.parquet"
 STATISTICS_FILE = "phase_2/statistics/identity_statistics.json"
 VALIDATION_FILE = "phase_2/validation/validation_report.json"
 
+VERSION = "4.1.0"
+TIMESTAMP = datetime.now(timezone.utc).isoformat()
 
 REQUIRED_COLUMNS = [
     "external_id",
@@ -26,65 +27,117 @@ REQUIRED_COLUMNS = [
     "title",
 ]
 
-OPTIONAL_COLUMNS = [
-    "barcode",
-    "size_amount",
-    "size_unit",
-    "description",
-    "ingredients_text",
-    "nutrition_text",
-    "image_url",
-    "price",
-    "currency",
+IDENTITY_FLAG_COLUMNS = [
+    "is_organic",
+    "is_gluten_free",
+    "is_naturally_simple",
+    "is_sugar_free",
+    "is_unsalted",
+    "is_lactose_free",
+    "is_peanut_free",
+    "is_plant_based",
+    "is_reduced_sodium",
 ]
 
-
-IDENTITY_PATTERNS = {
-    "organic": [r"\borganic\b"],
-    "gluten_free": [r"\bgluten[- ]free\b"],
-    "naturally_simple": [r"\bnaturally simple\b"],
-    "sugar_free": [r"\bsugar[- ]free\b"],
-    "unsalted": [r"\bunsalted\b"],
-    "lactose_free": [r"\blactose[- ]free\b"],
-    "peanut_free": [r"\bpeanut[- ]free\b"],
-    "plant_based": [r"\bplant[- ]based\b"],
-    "reduced_sodium": [r"\breduced sodium\b"],
+BRAND_MAP = {
+    "compliments organic": ("Compliments", "Organic"),
+    "compliments balance": ("Compliments", "Balance"),
+    "compliments naturally simple": ("Compliments", "Naturally Simple"),
+    "compliments green care": ("Compliments", "Green"),
+    "compliments green": ("Compliments", "Green"),
+    "compliments little ones": ("Compliments", "Little Ones"),
+    "sensations": ("Sensations", "Sensations"),
+    "compliments": ("Compliments", "Core"),
+    "compliments ": ("Compliments", "Core"),
+    " compliments": ("Compliments", "Core"),
 }
 
-
-FLAVOUR_PATTERNS = [
-    "vanilla",
-    "chocolate",
-    "strawberry",
-    "blueberry",
-    "raspberry",
+FLAVOUR_KEYWORDS = [
+    "almond",
+    "apple",
     "banana",
-    "peach",
-    "mango",
-    "coffee",
+    "blueberry",
     "caramel",
+    "cherry",
+    "chocolate",
+    "cinnamon",
+    "coconut",
+    "cranberry",
+    "honey",
     "lemon",
     "lime",
-    "original",
-    "plain",
+    "mango",
+    "maple",
+    "mixed berry",
+    "peach",
+    "peanut",
+    "peppermint",
+    "pineapple",
+    "pomegranate",
+    "raspberry",
+    "strawberry",
+    "tropical",
+    "vanilla",
+    "watermelon",
+    "white chocolate",
+    "berry",
+    "espresso",
+    "butterscotch",
+    "toffee",
 ]
 
+FLAVOUR_PLURAL_PATTERNS = {
+    "berry": r"berr(?:y|ies)",
+    "cherry": r"cherr(?:y|ies)",
+    "peach": r"peach(?:es)?",
+    "mango": r"mang(?:o|os)",
+}
 
-FORMULATION_PATTERNS = [
+FORMULATION_KEYWORDS = [
+    "smooth",
+    "crunchy",
+    "creamy",
+    "chunky",
     "whole",
-    "partly skimmed",
-    "partially skimmed",
-    "skim",
-    "shredded",
+    "halves",
     "sliced",
-    "diced",
+    "ground",
     "chopped",
-    "powder",
-    "liquid",
-    "frozen",
+    "breaded",
     "fresh",
+    "frozen",
     "roasted",
+    "smoked",
 ]
+
+BRAND_PREFIXES = [
+    ("Compliments Naturally Simple ", ""),
+    ("Compliments Balance ", ""),
+    ("Compliments Organic ", ""),
+    ("Compliments Green Care ", ""),
+    ("Compliments Little Ones ", ""),
+    ("Compliments ", ""),
+    ("Sensations ", ""),
+]
+
+SIZE_PATTERNS = [
+    r"\s+\d+\s*x\s+\d+\s*(?:g|kg|ml|l|oz|lb|feet|yards?)s?\s*$",
+    r"\s+\d+\s*x\s+\d+\s*(?:tablets?|caplets?|capsules?|sheets?|bags?|rolls?)\s*$",
+    r"\s+\d+\s*x\s*$",
+    r"\s+\d+(?:\.\d+)?[\s-]*inch(?:es)?\s*x\s*\d+\s*(?:feet|yards?)s?\s*$",
+    r"\s+\d+(?:\.\d+)?[\s-]*inch(?:es)?\s*$",
+    r"\s+\d+\s*(?:tablets?|caplets?|capsules?|sachets?|sticks?|bars?|rolls?|sheets?|bags?|bulbs?|lamps?|lozenges?|plugs?|pairs?|liners?|wipes?|strips?|sprays?|cots?|napkins?|boxes?|pods?)\s*$",
+    r"\s+\d+\s*(?:tea\s+)?bags?\s*$",
+    r"\s+\d+\s*(?:tea\s+)?sachets?\s*$",
+    r"\s+\d+\s*(?:count|ea|pack|pieces?|slice|cups?)\s*$",
+    r"\s+\d+\s+per\s+pack\s*$",
+    r"\s+\d+\s+count\s*$",
+    r"\s+\d[\d,.]*\s*(?:g|kg|ml|l|oz|lb|litre|liters?|pound)s?\s*$",
+    r"\s+\d[\d,.]*\s*(?:feet|yards?)s?\s*$",
+    r"\s+\d+(?:\.\d+)?[\s-]*(?:oz|ounce)s?\s*$",
+]
+
+BRACKET_PATTERN = r"\s*\([^)]*\)\s*"
 
 
 def clean_text(value: Any) -> str | None:
@@ -112,9 +165,397 @@ def normalize_text(value: Any) -> str | None:
     return re.sub(r"\s+", " ", value).strip()
 
 
-def normalize_brand(value: Any) -> str | None:
-    return clean_text(value)
+def normalize_brand(value: Any) -> tuple[str, str]:
+    if value is None or pd.isna(value):
+        return ("Unknown", "Core")
 
+    key = str(value).strip().lower()
+
+    if key in BRAND_MAP:
+        return BRAND_MAP[key]
+
+    if "compliments" in key:
+        return ("Compliments", "Core")
+
+    if "sensations" in key:
+        return ("Sensations", "Sensations")
+
+    return (str(value).strip(), "Core")
+
+
+def extract_identity_flags(title: Any) -> dict[str, bool]:
+    title_normalized = normalize_text(title) or ""
+
+    return {
+        "is_organic": bool(
+            re.search(r"\borganic\b", title_normalized)
+        ),
+        "is_gluten_free": bool(
+            re.search(r"\bgluten[\s-]+free\b", title_normalized)
+        ),
+        "is_naturally_simple": bool(
+            re.search(r"\bnaturally\s+simple\b", title_normalized)
+        ),
+        "is_sugar_free": bool(
+            re.search(
+                r"\bsugar[\s-]+free\b"
+                r"|\b(?:no sugar added|unsweetened)\b"
+                r"|\bzero\s+sugar\b",
+                title_normalized,
+            )
+        ),
+        "is_unsalted": bool(
+            re.search(
+                r"\bunsalted\b|\bno salt\b",
+                title_normalized,
+            )
+        ),
+        "is_lactose_free": bool(
+            re.search(
+                r"\blactose[\s-]+free\b",
+                title_normalized,
+            )
+        ),
+        "is_peanut_free": bool(
+            re.search(
+                r"\bpeanut[\s-]+free\b",
+                title_normalized,
+            )
+        ),
+        "is_plant_based": bool(
+            re.search(
+                r"\bplant[\s-]+based\b",
+                title_normalized,
+            )
+        ),
+        "is_reduced_sodium": bool(
+            re.search(
+                r"\breduced\s+sodium\b"
+                r"|\blow\s+sodium\b"
+                r"|\bno\s+salt\s+added\b",
+                title_normalized,
+            )
+        ),
+    }
+
+
+def extract_fat_info(title: Any) -> dict[str, Any]:
+    title_normalized = normalize_text(title) or ""
+
+    fat_level = "regular"
+
+    if re.search(
+        r"\b(?:light|lite|reduced fat|low fat|lean)\b",
+        title_normalized,
+    ):
+        fat_level = "reduced_fat"
+    elif re.search(
+        r"\bfat[\s-]+free\b",
+        title_normalized,
+    ):
+        fat_level = "fat_free"
+
+    fat_percentage = None
+
+    pct_match = re.search(
+        r"(\d+(?:\.\d+)?)\s*%",
+        title_normalized,
+    )
+
+    if pct_match:
+        value = float(pct_match.group(1))
+
+        skip_context = any(
+            word in title_normalized
+            for word in [
+                "cocoa",
+                "alcohol",
+                "isopropyl",
+                "peanuts",
+            ]
+        )
+
+        if value < 100 and not skip_context:
+            fat_percentage = value
+
+            if 0 < value <= 0.7:
+                fat_level = "fat_free"
+
+    return {
+        "fat_level": fat_level,
+        "fat_percentage": fat_percentage,
+    }
+
+
+def extract_flavours(title: Any) -> list[str]:
+    title_normalized = normalize_text(title) or ""
+
+    found = []
+
+    for keyword in FLAVOUR_KEYWORDS:
+        if " " in keyword:
+            if keyword in title_normalized:
+                found.append(keyword)
+            continue
+
+        if keyword in FLAVOUR_PLURAL_PATTERNS:
+            pattern = FLAVOUR_PLURAL_PATTERNS[keyword]
+        else:
+            pattern = re.escape(keyword) + r"s?"
+
+        if re.search(
+            r"\b" + pattern + r"\b",
+            title_normalized,
+        ):
+            found.append(keyword)
+
+    return sorted(set(found))
+
+
+def extract_formulation(title: Any) -> list[str]:
+    title_normalized = normalize_text(title) or ""
+
+    found = []
+
+    for keyword in FORMULATION_KEYWORDS:
+        if re.search(
+            rf"\b{re.escape(keyword)}\b",
+            title_normalized,
+        ):
+            found.append(keyword)
+
+    return sorted(set(found))
+
+
+def extract_functional_variant(title: Any) -> str | None:
+    title_normalized = normalize_text(title) or ""
+
+    if re.search(r"\bdiapers?\b", title_normalized):
+        match = re.search(
+            r"\bsize\s+(\d+)\b",
+            title_normalized,
+        )
+
+        if match:
+            return f"size_{match.group(1)}"
+
+    if re.search(
+        r"\bbin\s+liners?\b|\bcompostable\s+bin\s+liners?\b",
+        title_normalized,
+    ):
+        match = re.search(
+            r"\b(small|tall)\b",
+            title_normalized,
+        )
+
+        if match:
+            return match.group(1)
+
+    return None
+
+
+def build_variant_attributes(
+    size: Any,
+    title: Any = None,
+) -> dict[str, Any]:
+    size_clean = clean_text(size)
+    title_clean = clean_text(title)
+    attributes: dict[str, Any] = {}
+
+    variant_text = size_clean
+
+    if variant_text is None and title_clean is not None:
+        search_text = re.sub(r"\s*\([^)]*\)\s*$", "", title_clean).strip()
+
+        patterns = [
+            r"(\d+(?:\.\d+)?)\s*(litres?|liters?)\b",
+            r"^\s*(\d+(?:\.\d+)?)\s*(litres?|liters?)\b",
+            r"(\d+(?:\.\d+)?)\s*[-]?\s*(inch|inches)\b",
+            r"(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)\s*(g|kg|ml|l|oz|lb|mg|litres?|liters?)\s*$",
+            r"(\d+(?:\.\d+)?)\s*(g|kg|ml|l|oz|lb|mg|litres?|liters?)"
+            r"(?:\s+(\d+)\s*(?:count|ea|packs?|pieces?|bags?|boxes?))?\s*$",
+            r"(\d+(?:\.\d+)?)\s*(?:inch|inches)\s*x\s*"
+            r"(\d+(?:\.\d+)?)\s*(feet|foot|yards?)\s*$",
+            r"(\d+(?:\.\d+)?)\s*(?:inch|inches)\s*$",
+            r"(\d+(?:\.\d+)?)\s*(feet|foot|yards?)s?\s*$",
+            r"(\d+(?:\.\d+)?)\s*(m|meter|meters|cm|centimeter|centimeters)\s*$",
+            r"(\d+(?:\.\d+)?)\s*(g|kg|ml|l|oz|lb|mg|litres?|liters?)\s+"
+            r"(\d+)\s*(?:count|ea|packs?|pieces?|bags?|boxes?|"
+            r"softgel\s+capsules?|capsules?|tablets?|pouches?)\s*$",
+            r"(\d+)\s*(?:per\s+pack|count|ea|pack|piece|slice|cups?|"
+            r"tablets?|caplets?|capsules?|sachets?|sticks?|bars?|"
+            r"rolls?|sheets?|bags?|bulbs?|lamps?|lozenges?|plugs?|"
+            r"pairs?|liners?|wipes?|strips?|sprays?|cots?|"
+            r"napkins?|boxes?|pods?|pouches?|cases?|"
+            r"softgel\s+capsules?|tea\s+bags?|k-cups?|thighs?)s?\s*$",
+            r"(\d+)\s+(?:sterile\s+)?(?:bandages?|pouches?|cases?|"
+            r"k-cups?|thighs?|tests?|softgel\s+capsules?)\s*$",
+            r"twin\s+pack\s*$",
+        ]
+
+        for pattern in patterns:
+            match = re.search(pattern, search_text, re.IGNORECASE)
+            if match:
+                variant_text = match.group(0).strip()
+                break
+
+    if variant_text is not None:
+        text = variant_text.strip()
+
+        match = re.match(
+            r"(\d+(?:\.\d+)?)\s*x\s*"
+            r"(\d+(?:\.\d+)?)\s*"
+            r"(g|kg|ml|l|oz|lb|mg|litres?|liters?)"
+            r"(?:\s+(\d+)\s*(?:count|ea|packs?|pieces?|bags?|boxes?))?\s*$",
+            text,
+            re.IGNORECASE,
+        )
+
+        if match:
+            unit = match.group(3).lower()
+
+            if unit in {"litre", "litres", "liter", "liters"}:
+                unit = "l"
+
+            attributes = {
+                "qty": int(float(match.group(1))),
+                "amount": float(match.group(2)),
+                "unit": unit,
+            }
+
+            if match.group(4):
+                attributes["count"] = int(match.group(4))
+
+        else:
+            match = re.match(
+                r"(\d+(?:\.\d+)?)\s*[-]?\s*"
+                r"(g|kg|ml|l|oz|lb|mg|litres?|liters?)"
+                r"(?:\s+(\d+)\s*(?:count|ea|packs?|pieces?|bags?|boxes?))?\s*$",
+                text,
+                re.IGNORECASE,
+            )
+
+            if match:
+                unit = match.group(2).lower()
+
+                if unit in {"litre", "litres", "liter", "liters"}:
+                    unit = "l"
+
+                attributes = {
+                    "amount": float(match.group(1)),
+                    "unit": unit,
+                }
+
+                if match.group(3):
+                    attributes["count"] = int(match.group(3))
+
+            else:
+                match = re.match(
+                    r"(\d+(?:\.\d+)?)\s*[-]?\s*"
+                    r"(inch|inches|feet|foot|yards?|m|meter|meters|"
+                    r"cm|centimeter|centimeters)\s*$",
+                    text,
+                    re.IGNORECASE,
+                )
+
+                if match:
+                    unit = match.group(2).lower()
+
+                    if unit in {"inches"}:
+                        unit = "inch"
+                    elif unit == "foot":
+                        unit = "feet"
+
+                    attributes = {
+                        "amount": float(match.group(1)),
+                        "unit": unit,
+                    }
+
+                else:
+                    match = re.match(
+                        r"(\d+(?:\.\d+)?)\s*"
+                        r"(?:inch|inches)\s*x\s*"
+                        r"(\d+(?:\.\d+)?)\s*"
+                        r"(feet|foot|yards?)s?\s*$",
+                        text,
+                        re.IGNORECASE,
+                    )
+
+                    if match:
+                        length_unit = match.group(3).lower()
+
+                        if length_unit == "foot":
+                            length_unit = "feet"
+
+                        attributes = {
+                            "width": float(match.group(1)),
+                            "width_unit": "inch",
+                            "length": float(match.group(2)),
+                            "length_unit": length_unit,
+                        }
+
+                    else:
+                        match = re.match(
+                            r"(\d+(?:\.\d+)?)\s*"
+                            r"(g|kg|ml|l|oz|lb|mg|litres?|liters?)\s+"
+                            r"(\d+)\s*"
+                            r"(?:count|ea|packs?|pieces?|bags?|boxes?|"
+                            r"softgel\s+capsules?|capsules?|tablets?|pouches?)\s*$",
+                            text,
+                            re.IGNORECASE,
+                        )
+
+                        if match:
+                            unit = match.group(2).lower()
+
+                            if unit in {"litre", "litres", "liter", "liters"}:
+                                unit = "l"
+
+                            attributes = {
+                                "amount": float(match.group(1)),
+                                "unit": unit,
+                                "count": int(match.group(3)),
+                            }
+
+                        else:
+                            match = re.match(
+                                r"(\d+)\s*"
+                                r"(?:per\s+pack|count|ea|pack|piece|slice|cups?|"
+                                r"tablets?|caplets?|capsules?|sachets?|sticks?|bars?|"
+                                r"rolls?|sheets?|bags?|bulbs?|lamps?|lozenges?|plugs?|"
+                                r"pairs?|liners?|wipes?|strips?|sprays?|cots?|"
+                                r"napkins?|boxes?|pods?|pouches?|cases?|"
+                                r"softgel\s+capsules?|tea\s+bags?|k-cups?|thighs?|"
+                                r"sterile\s+bandages?|tests?)s?\s*$",
+                                text,
+                                re.IGNORECASE,
+                            )
+
+                            if match:
+                                attributes = {
+                                    "count": int(match.group(1)),
+                                }
+
+                            elif re.fullmatch(
+                                r"twin\s+pack",
+                                text,
+                                re.IGNORECASE,
+                            ):
+                                attributes = {
+                                    "count": 2,
+                                }
+
+                            else:
+                                attributes = {
+                                    "raw": text,
+                                }
+
+    functional_variant = extract_functional_variant(title)
+
+    if functional_variant is not None:
+        attributes["functional_variant"] = functional_variant
+
+    return attributes
 
 def extract_product_name(
     title: Any,
@@ -129,174 +570,238 @@ def extract_product_name(
     if brand_clean is None:
         return title_clean
 
-    if title_clean.lower().startswith(brand_clean.lower()):
+    if title_clean.lower().startswith(
+        brand_clean.lower()
+    ):
         product_name = title_clean[len(brand_clean):].strip()
-        product_name = re.sub(r"^[\s\-|:/]+", "", product_name)
+
+        product_name = re.sub(
+            r"^[\s\-|:/]+",
+            "",
+            product_name,
+        )
 
         return product_name or title_clean
 
     return title_clean
 
 
-def extract_identity_attributes(
+def extract_core_title(
     title: Any,
-) -> dict[str, Any]:
-    normalized = normalize_text(title)
+    product_line: str,
+) -> str:
+    title_clean = clean_text(title)
 
-    if normalized is None:
-        return {}
+    if title_clean is None:
+        return ""
 
-    attributes = {}
+    text = title_clean
 
-    for attribute, patterns in IDENTITY_PATTERNS.items():
-        attributes[attribute] = any(
-            re.search(pattern, normalized)
-            for pattern in patterns
-        )
-
-    return attributes
-
-
-def extract_fat_attributes(
-    title: Any,
-) -> dict[str, Any]:
-    normalized = normalize_text(title)
-
-    result = {
-        "fat_percentage": None,
-        "fat_level": None,
-    }
-
-    if normalized is None:
-        return result
-
-    percentage_match = re.search(
-        r"\b(\d+(?:\.\d+)?)\s*%",
-        normalized,
-    )
-
-    if percentage_match:
-        result["fat_percentage"] = float(
-            percentage_match.group(1)
-        )
-
-    fat_levels = {
-        "fat_free": [
-            r"\bfat[- ]free\b",
-            r"\bskim\b",
-            r"\bskimmed\b",
-        ],
-        "low_fat": [
-            r"\blow[- ]fat\b",
-        ],
-        "reduced_fat": [
-            r"\breduced[- ]fat\b",
-        ],
-        "full_fat": [
-            r"\bfull[- ]fat\b",
-        ],
-    }
-
-    for level, patterns in fat_levels.items():
-        if any(
-            re.search(pattern, normalized)
-            for pattern in patterns
-        ):
-            result["fat_level"] = level
+    for prefix, replacement in BRAND_PREFIXES:
+        if text.lower().startswith(prefix.lower()):
+            text = (
+                replacement
+                + text[len(prefix):]
+            )
             break
 
-    return result
-
-
-def extract_flavour(
-    title: Any,
-) -> str | None:
-    normalized = normalize_text(title)
-
-    if normalized is None:
-        return None
-
-    for flavour in FLAVOUR_PATTERNS:
-        if re.search(
-            rf"\b{re.escape(flavour)}\b",
-            normalized,
-        ):
-            return flavour
-
-    return None
-
-
-def extract_formulation(
-    title: Any,
-) -> str | None:
-    normalized = normalize_text(title)
-
-    if normalized is None:
-        return None
-
-    for formulation in FORMULATION_PATTERNS:
-        if re.search(
-            rf"\b{re.escape(formulation)}\b",
-            normalized,
-        ):
-            return formulation
-
-    return None
-
-
-def extract_variant_attributes(
-    size_amount: Any,
-    size_unit: Any,
-) -> dict[str, Any]:
-    attributes = {}
-
-    amount = clean_text(size_amount)
-    unit = clean_text(size_unit)
-
-    if amount is not None:
-        attributes["size_amount"] = amount
-
-    if unit is not None:
-        attributes["size_unit"] = unit
-
-    return attributes
-
-
-def build_identity_attributes(
-    title: Any,
-) -> dict[str, Any]:
-    attributes = extract_identity_attributes(title)
-
-    attributes.update(
-        extract_fat_attributes(title)
+    text = re.sub(
+        BRACKET_PATTERN,
+        " ",
+        text,
     )
 
-    flavour = extract_flavour(title)
+    previous = None
 
-    if flavour is not None:
-        attributes["flavour"] = flavour
+    while previous != text:
+        previous = text
 
-    formulation = extract_formulation(title)
+        for pattern in SIZE_PATTERNS:
+            text = re.sub(
+                pattern,
+                "",
+                text,
+                flags=re.IGNORECASE,
+            )
 
-    if formulation is not None:
-        attributes["formulation"] = formulation
+    text = re.sub(
+        r"\s+",
+        " ",
+        text,
+    ).strip()
 
-    return attributes
+    return text
+
+
+def normalize_title_for_grouping(
+    title: Any,
+) -> str:
+    text = normalize_text(title)
+
+    if text is None:
+        return ""
+
+    text = re.sub(
+        r"\b(?:grams?|gram)\b",
+        "g",
+        text,
+    )
+
+    text = re.sub(
+        r"\b(?:milliliters?|millilitre|mls?)\b",
+        "ml",
+        text,
+    )
+
+    text = re.sub(
+        r"\b(?:kilograms?|kgs?)\b",
+        "kg",
+        text,
+    )
+
+    text = re.sub(
+        r"(\d+)\s*(?:g|gram|grams)\b",
+        r"\1g",
+        text,
+    )
+
+    text = re.sub(
+        r"(\d+)\s*(?:ml|milliliter|millilitre)\b",
+        r"\1ml",
+        text,
+    )
+
+    text = re.sub(
+        r"\b(?:compliments|sensations)\b",
+        "",
+        text,
+    )
+
+    descriptive = {
+        "organic",
+        "natural",
+        "simple",
+        "light",
+        "lean",
+        "free",
+        "reduced",
+        "extra",
+        "plus",
+        "ultra",
+        "premium",
+        "classic",
+        "original",
+        "traditional",
+        "new",
+        "improved",
+        "rich",
+        "creamy",
+        "smooth",
+        "crunchy",
+        "chunky",
+        "old",
+        "style",
+        "flavour",
+        "flavor",
+        "artisan",
+        "homestyle",
+    }
+
+    tokens = [
+        word
+        for word in text.split()
+        if word not in descriptive
+    ]
+
+    packaging = {
+        "pack",
+        "bag",
+        "box",
+        "twin",
+        "triple",
+        "value",
+        "club",
+        "family",
+        "size",
+    }
+
+    tokens = [
+        word
+        for word in tokens
+        if word not in packaging
+    ]
+
+    tokens = [
+        re.sub(
+            r"[^a-z0-9]",
+            "",
+            token,
+        )
+        for token in tokens
+    ]
+
+    tokens = [
+        token
+        for token in tokens
+        if len(token) > 1
+    ]
+
+    unique_tokens = sorted(set(tokens))
+
+    return " ".join(unique_tokens)
 
 
 def build_identity_hash(
-    source_retailer: Any,
-    brand: Any,
-    product_name: Any,
-    identity_attributes: dict[str, Any],
+    row: dict[str, Any],
 ) -> str:
+    variant_attributes = row.get("variant_attributes")
+
+    if isinstance(variant_attributes, str):
+        try:
+            variant_attributes = json.loads(
+                variant_attributes
+            )
+        except json.JSONDecodeError:
+            variant_attributes = {}
+
+    if not isinstance(variant_attributes, dict):
+        variant_attributes = {}
+
     payload = {
         "source_retailer": normalize_text(
-            source_retailer
+            row.get("source_retailer")
         ),
-        "brand": normalize_text(brand),
-        "product_name": normalize_text(product_name),
-        "identity_attributes": identity_attributes,
+        "brand_norm": normalize_text(
+            row.get("brand_norm")
+        ),
+        "product_line": normalize_text(
+            row.get("product_line")
+        ),
+        "core_title": normalize_title_for_grouping(
+            row.get("core_title")
+        ),
+        "identity_flags": {
+            column: bool(row.get(column))
+            for column in IDENTITY_FLAG_COLUMNS
+        },
+        "fat_percentage": (
+            float(row["fat_percentage"])
+            if pd.notna(row.get("fat_percentage"))
+            else None
+        ),
+        "fat_level": row.get(
+            "fat_level",
+            "regular",
+        ),
+        "flavour": sorted(
+            row.get("flavour") or []
+        ),
+        "formulation": sorted(
+            row.get("formulation") or []
+        ),
+        "functional_variant": variant_attributes.get(
+            "functional_variant"
+        ),
     }
 
     serialized = json.dumps(
@@ -331,23 +836,47 @@ def transform_products(
 ) -> pd.DataFrame:
     validate_input_schema(df)
 
-    records = []
+    output = df.copy()
+
+    identity_flags_list = []
+    fat_info_list = []
+    flavour_list = []
+    formulation_list = []
+    brand_norm_list = []
+    product_line_list = []
+    product_name_list = []
+    core_title_list = []
+    barcode_list = []
+    size_list = []
+    variant_attributes_list = []
 
     for _, row in df.iterrows():
-        external_id = clean_text(
-            row["external_id"]
+        title = clean_text(
+            row["title"]
         )
 
-        source_retailer = clean_text(
-            row["source_retailer"]
-        )
-
-        brand = normalize_brand(
+        brand = clean_text(
             row["brand"]
         )
 
-        title = clean_text(
-            row["title"]
+        identity_flags = extract_identity_flags(
+            title
+        )
+
+        fat_info = extract_fat_info(
+            title
+        )
+
+        flavour = extract_flavours(
+            title
+        )
+
+        formulation = extract_formulation(
+            title
+        )
+
+        brand_norm, product_line = normalize_brand(
+            brand
         )
 
         product_name = extract_product_name(
@@ -355,171 +884,525 @@ def transform_products(
             brand,
         )
 
-        identity_attributes = (
-            build_identity_attributes(title)
+        core_title = extract_core_title(
+            title,
+            product_line,
         )
 
-        variant_attributes = (
-            extract_variant_attributes(
-                row.get("size_amount"),
-                row.get("size_unit"),
+        barcode = clean_text(
+            row.get(
+                "barcode",
+                row.get("upc"),
             )
         )
 
-        identity_hash = build_identity_hash(
-            source_retailer,
-            brand,
-            product_name,
-            identity_attributes,
+        size = clean_text(
+            row.get("size")
         )
 
-        records.append(
-            {
-                "external_id": external_id,
-                "source_retailer": source_retailer,
-                "barcode": clean_text(
-                    row.get("barcode")
-                ),
-                "brand": brand,
-                "title": title,
-                "product_name": product_name,
-                "identity_attributes": json.dumps(
-                    identity_attributes,
-                    sort_keys=True,
-                    ensure_ascii=False,
-                ),
-                "variant_attributes": json.dumps(
-                    variant_attributes,
-                    sort_keys=True,
-                    ensure_ascii=False,
-                ),
-                "size_amount": clean_text(
-                    row.get("size_amount")
-                ),
-                "size_unit": clean_text(
-                    row.get("size_unit")
-                ),
-                "identity_hash": identity_hash,
-            }
+        variant_attributes = build_variant_attributes(
+            row.get("size"),
+            title,
         )
 
-    return pd.DataFrame(records)
+        identity_flags_list.append(
+            identity_flags
+        )
+
+        fat_info_list.append(
+            fat_info
+        )
+
+        flavour_list.append(
+            flavour
+        )
+
+        formulation_list.append(
+            formulation
+        )
+
+        brand_norm_list.append(
+            brand_norm
+        )
+
+        product_line_list.append(
+            product_line
+        )
+
+        product_name_list.append(
+            product_name
+        )
+
+        core_title_list.append(
+            core_title
+        )
+
+        barcode_list.append(
+            barcode
+        )
+
+        size_list.append(
+            size
+        )
+
+        variant_attributes_list.append(
+            json.dumps(
+                variant_attributes,
+                sort_keys=True,
+                ensure_ascii=False,
+            )
+        )
+
+    identity_flags_df = pd.DataFrame(
+        identity_flags_list,
+        index=output.index,
+    )
+
+    for column in IDENTITY_FLAG_COLUMNS:
+        if column in identity_flags_df.columns:
+            output[column] = (
+                identity_flags_df[column]
+                .fillna(False)
+                .astype(bool)
+            )
+
+    fat_info_df = pd.DataFrame(
+        fat_info_list,
+        index=output.index,
+    )
+
+    output["fat_level"] = (
+        fat_info_df["fat_level"]
+    )
+
+    output["fat_percentage"] = (
+        fat_info_df["fat_percentage"]
+    )
+
+    output["brand_norm"] = pd.Series(
+        brand_norm_list,
+        index=output.index,
+    )
+
+    output["product_line"] = pd.Series(
+        product_line_list,
+        index=output.index,
+    )
+
+    output["product_name"] = pd.Series(
+        product_name_list,
+        index=output.index,
+    )
+
+    output["core_title"] = pd.Series(
+        core_title_list,
+        index=output.index,
+    )
+
+    output["barcode"] = pd.Series(
+        barcode_list,
+        index=output.index,
+    )
+
+    output["size"] = pd.Series(
+        size_list,
+        index=output.index,
+    )
+
+    output["variant_attributes"] = pd.Series(
+        variant_attributes_list,
+        index=output.index,
+    )
+
+    output["flavour"] = pd.Series(
+        flavour_list,
+        index=output.index,
+        dtype="object",
+    )
+
+    output["formulation"] = pd.Series(
+        formulation_list,
+        index=output.index,
+        dtype="object",
+    )
+
+    output["identity_hash"] = output.apply(
+        lambda row: build_identity_hash(
+            row.to_dict()
+        ),
+        axis=1,
+    )
+
+    return output
+
+
+def build_statistics(
+    df_in: pd.DataFrame,
+    df_out: pd.DataFrame,
+) -> dict[str, Any]:
+    functional_variant_counts: dict[str, int] = {}
+
+    for value in df_out["variant_attributes"]:
+        try:
+            attributes = json.loads(value)
+        except (TypeError, json.JSONDecodeError):
+            attributes = {}
+
+        functional_variant = attributes.get(
+            "functional_variant"
+        )
+
+        if functional_variant is not None:
+            functional_variant_counts[
+                str(functional_variant)
+            ] = (
+                functional_variant_counts.get(
+                    str(functional_variant),
+                    0,
+                )
+                + 1
+            )
+
+    return {
+        "version": VERSION,
+        "timestamp": TIMESTAMP,
+        "input": {
+            "row_count": int(len(df_in)),
+            "column_count": int(len(df_in.columns)),
+        },
+        "output": {
+            "row_count": int(len(df_out)),
+            "column_count": int(len(df_out.columns)),
+            "columns_added": sorted(
+                set(df_out.columns)
+                - set(df_in.columns)
+            ),
+        },
+        "brand_normalization": {
+            "unique_brands": int(
+                df_out["brand_norm"].nunique()
+            ),
+            "product_lines": {
+                str(key): int(value)
+                for key, value in (
+                    df_out["product_line"]
+                    .value_counts()
+                    .items()
+                )
+            },
+        },
+        "identity_flags": {
+            column: int(
+                df_out[column].sum()
+            )
+            for column in IDENTITY_FLAG_COLUMNS
+        },
+        "fat_info": {
+            "fat_level_distribution": {
+                str(key): int(value)
+                for key, value in (
+                    df_out["fat_level"]
+                    .value_counts()
+                    .items()
+                )
+            },
+            "fat_percentage_nulls": int(
+                df_out["fat_percentage"].isna().sum()
+            ),
+            "fat_percentage_non_null": int(
+                df_out["fat_percentage"].notna().sum()
+            ),
+        },
+        "flavour": {
+            "products_with_flavour": int(
+                (
+                    df_out["flavour"]
+                    .apply(len)
+                    > 0
+                ).sum()
+            ),
+            "products_without_flavour": int(
+                (
+                    df_out["flavour"]
+                    .apply(len)
+                    == 0
+                ).sum()
+            ),
+        },
+        "formulation": {
+            "products_with_formulation": int(
+                (
+                    df_out["formulation"]
+                    .apply(len)
+                    > 0
+                ).sum()
+            ),
+            "products_without_formulation": int(
+                (
+                    df_out["formulation"]
+                    .apply(len)
+                    == 0
+                ).sum()
+            ),
+        },
+        "functional_variant": {
+            "products_with_functional_variant": int(
+                sum(functional_variant_counts.values())
+            ),
+            "distribution": functional_variant_counts,
+        },
+        "core_title": {
+            "unique_count": int(
+                df_out["core_title"].nunique()
+            ),
+            "empty_count": int(
+                (
+                    df_out["core_title"]
+                    .fillna("")
+                    .str.strip()
+                    == ""
+                ).sum()
+            ),
+        },
+        "identity_hash": {
+            "unique_count": int(
+                df_out["identity_hash"].nunique()
+            ),
+            "empty_count": int(
+                (
+                    df_out["identity_hash"]
+                    .fillna("")
+                    .str.strip()
+                    == ""
+                ).sum()
+            ),
+        },
+    }
+
+
+def build_validation_report(
+    df_in: pd.DataFrame,
+    df_out: pd.DataFrame,
+) -> dict[str, Any]:
+    checks: dict[str, Any] = {}
+
+    checks["row_count"] = {
+        "input": int(len(df_in)),
+        "output": int(len(df_out)),
+        "pass": len(df_in) == len(df_out),
+    }
+
+    missing_original = sorted(
+        set(df_in.columns)
+        - set(df_out.columns)
+    )
+
+    checks["original_columns_preserved"] = {
+        "missing": missing_original,
+        "pass": len(missing_original) == 0,
+    }
+
+    expected_columns = {
+        "brand_norm",
+        "product_line",
+        *IDENTITY_FLAG_COLUMNS,
+        "fat_level",
+        "fat_percentage",
+        "flavour",
+        "formulation",
+        "variant_attributes",
+        "core_title",
+        "identity_hash",
+    }
+
+    missing_new = sorted(
+        expected_columns
+        - set(df_out.columns)
+    )
+
+    checks["required_phase2_columns"] = {
+        "expected": sorted(expected_columns),
+        "missing": missing_new,
+        "pass": len(missing_new) == 0,
+    }
+
+    duplicate_source_ids = int(
+        df_out.duplicated(
+            subset=[
+                "source_retailer",
+                "external_id",
+            ]
+        ).sum()
+    )
+
+    checks["source_identifier_uniqueness"] = {
+        "duplicate_count": duplicate_source_ids,
+        "pass": duplicate_source_ids == 0,
+    }
+
+    missing_external_id = int(
+        df_out["external_id"]
+        .isna()
+        .sum()
+    )
+
+    checks["external_id"] = {
+        "missing_count": missing_external_id,
+        "pass": missing_external_id == 0,
+    }
+
+    empty_core_title = int(
+        (
+            df_out["core_title"]
+            .fillna("")
+            .str.strip()
+            == ""
+        ).sum()
+    )
+
+    checks["core_title"] = {
+        "empty_count": empty_core_title,
+        "pass": empty_core_title == 0,
+    }
+
+    empty_identity_hash = int(
+        (
+            df_out["identity_hash"]
+            .fillna("")
+            .str.strip()
+            == ""
+        ).sum()
+    )
+
+    checks["identity_hash"] = {
+        "empty_count": empty_identity_hash,
+        "pass": empty_identity_hash == 0,
+    }
+
+    invalid_fat_levels = sorted(
+        set(
+            df_out["fat_level"]
+            .dropna()
+            .unique()
+        )
+        - {
+            "fat_free",
+            "reduced_fat",
+            "regular",
+        }
+    )
+
+    checks["fat_level"] = {
+        "invalid_values": invalid_fat_levels,
+        "pass": len(invalid_fat_levels) == 0,
+    }
+
+    identity_flags_boolean = all(
+        df_out[column].dtype == bool
+        for column in IDENTITY_FLAG_COLUMNS
+    )
+
+    checks["identity_flags_boolean"] = {
+        "pass": identity_flags_boolean,
+    }
+
+    invalid_variant_attributes = 0
+
+    for value in df_out["variant_attributes"]:
+        try:
+            parsed = json.loads(value)
+            if not isinstance(parsed, dict):
+                invalid_variant_attributes += 1
+        except (TypeError, json.JSONDecodeError):
+            invalid_variant_attributes += 1
+
+    checks["variant_attributes"] = {
+        "invalid_count": invalid_variant_attributes,
+        "pass": invalid_variant_attributes == 0,
+    }
+
+    checks["overall"] = {
+        "result": (
+            "PASS"
+            if all(
+                check.get("pass", True)
+                for check in checks.values()
+            )
+            else "FAIL"
+        )
+    }
+
+    return checks
+
+
+def run_phase2(
+    df: pd.DataFrame,
+) -> tuple[
+    pd.DataFrame,
+    dict[str, Any],
+    dict[str, Any],
+]:
+    df_out = transform_products(
+        df.copy()
+    )
+
+    validation = build_validation_report(
+        df,
+        df_out,
+    )
+
+    statistics = build_statistics(
+        df,
+        df_out,
+    )
+
+    return (
+        df_out,
+        validation,
+        statistics,
+    )
 
 
 def load_from_huggingface() -> pd.DataFrame:
-    print(
-        f"Reading Phase 1 output from HF: "
-        f"{INPUT_FILE}"
-    )
+    from huggingface_hub import hf_hub_download
 
-    local_file = hf_hub_download(
+    local_path = hf_hub_download(
         repo_id=HF_DATASET,
         filename=INPUT_FILE,
         repo_type="dataset",
     )
 
-    return pd.read_parquet(local_file)
-
-
-def build_statistics(
-    df: pd.DataFrame,
-) -> dict[str, Any]:
-    duplicate_count = int(
-        df.duplicated(
-            subset=[
-                "source_retailer",
-                "external_id",
-            ],
-            keep=False,
-        ).sum()
+    return pd.read_parquet(
+        local_path
     )
 
-    return {
-        "input_rows": int(len(df)),
-        "output_rows": int(len(df)),
-        "duplicate_product_keys": duplicate_count,
-        "missing_product_name": int(
-            df["product_name"].isna().sum()
-        ),
-        "missing_brand": int(
-            df["brand"].isna().sum()
-        ),
-        "missing_barcode": int(
-            df["barcode"].isna().sum()
-        ),
-        "missing_identity_hash": int(
-            df["identity_hash"].isna().sum()
-        ),
-        "unique_identity_hashes": int(
-            df["identity_hash"].nunique()
-        ),
-    }
 
-
-def build_validation_report(
-    df: pd.DataFrame,
+def save_outputs(
+    df_out: pd.DataFrame,
+    validation: dict[str, Any],
     statistics: dict[str, Any],
-) -> dict[str, Any]:
-    critical_errors = []
-    warnings = []
-
-    if statistics["missing_product_name"] > 0:
-        critical_errors.append(
-            "missing_product_identity"
-        )
-
-    if statistics["duplicate_product_keys"] > 0:
-        critical_errors.append(
-            "duplicate_external_id_within_retailer"
-        )
-
-    if statistics["missing_identity_hash"] > 0:
-        critical_errors.append(
-            "missing_identity_hash"
-        )
-
-    if statistics["missing_brand"] > 0:
-        warnings.append("missing_brand")
-
-    if statistics["missing_barcode"] > 0:
-        warnings.append("missing_barcode")
-
-    if critical_errors:
-        status = "FAIL"
-    elif warnings:
-        status = "WARNING"
-    else:
-        status = "PASS"
-
-    return {
-        "phase": "phase_2_identity",
-        "status": status,
-        "input_rows": int(len(df)),
-        "output_rows": int(len(df)),
-        "critical_errors": critical_errors,
-        "warnings": warnings,
-        "statistics": statistics,
-        "decision": (
-            "continue"
-            if status in {"PASS", "WARNING"}
-            else "stop"
-        ),
-    }
-
-
-def upload_to_huggingface(
-    df: pd.DataFrame,
-    statistics: dict[str, Any],
-    report: dict[str, Any],
 ) -> None:
-    api = HfApi()
+    output_path = Path(OUTPUT_FILE)
+    statistics_path = Path(STATISTICS_FILE)
+    validation_path = Path(VALIDATION_FILE)
 
-    parquet_path = "/tmp/standardized_products.parquet"
-    statistics_path = "/tmp/identity_statistics.json"
-    validation_path = "/tmp/validation_report.json"
+    output_path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
 
-    df.to_parquet(
-        parquet_path,
+    statistics_path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    validation_path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    df_out.to_parquet(
+        output_path,
         index=False,
     )
 
@@ -541,77 +1424,39 @@ def upload_to_huggingface(
         encoding="utf-8",
     ) as file:
         json.dump(
-            report,
+            validation,
             file,
             indent=2,
             ensure_ascii=False,
         )
 
-    api.upload_file(
-        path_or_fileobj=parquet_path,
-        path_in_repo=OUTPUT_FILE,
-        repo_id=HF_DATASET,
-        repo_type="dataset",
-    )
-
-    api.upload_file(
-        path_or_fileobj=statistics_path,
-        path_in_repo=STATISTICS_FILE,
-        repo_id=HF_DATASET,
-        repo_type="dataset",
-    )
-
-    api.upload_file(
-        path_or_fileobj=validation_path,
-        path_in_repo=VALIDATION_FILE,
-        repo_id=HF_DATASET,
-        repo_type="dataset",
-    )
-
-
-def run_phase_2() -> pd.DataFrame:
-    print(
-        "Starting Phase 2 — "
-        "Identity / Semantic Normalization"
-    )
-
-    input_df = load_from_huggingface()
-
-    print(
-        f"Phase 1 rows received: {len(input_df)}"
-    )
-
-    output_df = transform_products(input_df)
-
-    statistics = build_statistics(
-        output_df
-    )
-
-    report = build_validation_report(
-        output_df,
-        statistics,
-    )
-
-    upload_to_huggingface(
-        output_df,
-        statistics,
-        report,
-    )
-
-    print()
-    print("Phase 2 completed.")
-    print(
-        f"Output rows: {len(output_df)}"
-    )
-    print(
-        f"Status: {report['status']}"
-    )
-    print(
-        f"Uploaded: {OUTPUT_FILE}"
-    )
-
-    return output_df
-
 
 if __name__ == "__main__":
-    run_phase_2()
+    print("Starting Phase 2")
+
+    df_input = load_from_huggingface()
+
+    print(
+        f"Loaded {len(df_input)} rows "
+        f"with {len(df_input.columns)} columns"
+    )
+
+    df_output, validation, statistics = run_phase2(
+        df_input
+    )
+
+    save_outputs(
+        df_output,
+        validation,
+        statistics,
+    )
+
+    print(
+        f"Phase 2 complete: "
+        f"{len(df_output)} rows"
+    )
+
+    print(
+        f"Validation: "
+        f"{validation['overall']['result']}"
+    )

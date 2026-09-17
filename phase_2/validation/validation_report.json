@@ -1,0 +1,65 @@
+{
+  "row_count": {
+    "input": 4440,
+    "output": 4440,
+    "pass": true
+  },
+  "original_columns_preserved": {
+    "missing": [],
+    "pass": true
+  },
+  "required_phase2_columns": {
+    "expected": [
+      "brand_norm",
+      "core_title",
+      "fat_level",
+      "fat_percentage",
+      "flavour",
+      "formulation",
+      "identity_hash",
+      "is_gluten_free",
+      "is_lactose_free",
+      "is_naturally_simple",
+      "is_organic",
+      "is_peanut_free",
+      "is_plant_based",
+      "is_reduced_sodium",
+      "is_sugar_free",
+      "is_unsalted",
+      "product_line",
+      "variant_attributes"
+    ],
+    "missing": [],
+    "pass": true
+  },
+  "source_identifier_uniqueness": {
+    "duplicate_count": 0,
+    "pass": true
+  },
+  "external_id": {
+    "missing_count": 0,
+    "pass": true
+  },
+  "core_title": {
+    "empty_count": 0,
+    "pass": true
+  },
+  "identity_hash": {
+    "empty_count": 0,
+    "pass": true
+  },
+  "fat_level": {
+    "invalid_values": [],
+    "pass": true
+  },
+  "identity_flags_boolean": {
+    "pass": true
+  },
+  "variant_attributes": {
+    "invalid_count": 0,
+    "pass": true
+  },
+  "overall": {
+    "result": "PASS"
+  }
+}

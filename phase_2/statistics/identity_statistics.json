@@ -1,0 +1,95 @@
+{
+  "version": "4.1.0",
+  "timestamp": "2026-09-17T16:59:20.358389+00:00",
+  "input": {
+    "row_count": 4440,
+    "column_count": 14
+  },
+  "output": {
+    "row_count": 4440,
+    "column_count": 34,
+    "columns_added": [
+      "brand_norm",
+      "core_title",
+      "fat_level",
+      "fat_percentage",
+      "flavour",
+      "formulation",
+      "identity_hash",
+      "is_gluten_free",
+      "is_lactose_free",
+      "is_naturally_simple",
+      "is_organic",
+      "is_peanut_free",
+      "is_plant_based",
+      "is_reduced_sodium",
+      "is_sugar_free",
+      "is_unsalted",
+      "product_line",
+      "product_name",
+      "size",
+      "variant_attributes"
+    ]
+  },
+  "brand_normalization": {
+    "unique_brands": 2,
+    "product_lines": {
+      "Core": 4259,
+      "Organic": 90,
+      "Balance": 42,
+      "Naturally Simple": 25,
+      "Green": 9,
+      "Sensations": 8,
+      "Little Ones": 7
+    }
+  },
+  "identity_flags": {
+    "is_organic": 195,
+    "is_gluten_free": 42,
+    "is_naturally_simple": 88,
+    "is_sugar_free": 36,
+    "is_unsalted": 37,
+    "is_lactose_free": 9,
+    "is_peanut_free": 26,
+    "is_plant_based": 11,
+    "is_reduced_sodium": 21
+  },
+  "fat_info": {
+    "fat_level_distribution": {
+      "regular": 4312,
+      "reduced_fat": 119,
+      "fat_free": 9
+    },
+    "fat_percentage_nulls": 4386,
+    "fat_percentage_non_null": 54
+  },
+  "flavour": {
+    "products_with_flavour": 868,
+    "products_without_flavour": 3572
+  },
+  "formulation": {
+    "products_with_formulation": 983,
+    "products_without_formulation": 3457
+  },
+  "functional_variant": {
+    "products_with_functional_variant": 15,
+    "distribution": {
+      "size_6": 2,
+      "size_1": 1,
+      "size_5": 2,
+      "size_4": 2,
+      "size_2": 1,
+      "small": 4,
+      "size_3": 2,
+      "tall": 1
+    }
+  },
+  "core_title": {
+    "unique_count": 3904,
+    "empty_count": 0
+  },
+  "identity_hash": {
+    "unique_count": 3726,
+    "empty_count": 0
+  }
+}
