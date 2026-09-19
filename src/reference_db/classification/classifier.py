@@ -15,6 +15,8 @@ class ClassificationResult:
     taxonomy_confidence: float | None
     taxonomy_rule: str | None
     taxonomy_status: str | None
+    taxonomy_resolution: str | None
+    taxonomy_candidates: tuple[str, ...]
 
 
 def classify_product(product_name: str) -> ClassificationResult:
@@ -36,6 +38,8 @@ def classify_product(product_name: str) -> ClassificationResult:
             taxonomy_confidence=None,
             taxonomy_rule=None,
             taxonomy_status=None,
+            taxonomy_resolution=None,
+            taxonomy_candidates=(),
         )
 
     # Ambiguous / unknown domain → preserve ambiguity.
@@ -49,6 +53,8 @@ def classify_product(product_name: str) -> ClassificationResult:
             taxonomy_confidence=None,
             taxonomy_rule=None,
             taxonomy_status="AMBIGUOUS",
+            taxonomy_resolution=None,
+            taxonomy_candidates=(),
         )
 
     # Food → assign taxonomy.
@@ -67,5 +73,7 @@ def classify_product(product_name: str) -> ClassificationResult:
         taxonomy_confidence=taxonomy_match.confidence,
         taxonomy_rule=taxonomy_match.matched_rule,
         taxonomy_status=taxonomy_match.status,
+        taxonomy_resolution=taxonomy_match.resolution,
+        taxonomy_candidates=taxonomy_match.candidates,
     )
 

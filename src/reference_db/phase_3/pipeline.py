@@ -34,6 +34,8 @@ def classify_products(rows: list[Any]) -> list[dict[str, Any]]:
                 "taxonomy_confidence": result.taxonomy_confidence,
                 "taxonomy_rule": result.taxonomy_rule,
                 "taxonomy_status": result.taxonomy_status,
+                "taxonomy_resolution": result.taxonomy_resolution,
+                "taxonomy_candidates": result.taxonomy_candidates,
             }
         )
 
@@ -114,6 +116,8 @@ def run_phase3(rows: list[Any]) -> dict[str, list[dict[str, Any]]]:
             "taxonomy_confidence": result["taxonomy_confidence"],
             "taxonomy_rule": result["taxonomy_rule"],
             "taxonomy_status": result["taxonomy_status"],
+            "taxonomy_resolution": result["taxonomy_resolution"],
+            "taxonomy_candidates": result["taxonomy_candidates"],
         }
         for result in classification_results
     ]

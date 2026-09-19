@@ -12,6 +12,8 @@ class TaxonomyMatch:
     confidence: float
     matched_rule: str | None
     status: str
+    resolution: str = "unknown"
+    candidates: tuple[str, ...] = ()
 
 
 def normalize_text(text: str) -> str:
@@ -119,6 +121,198 @@ DISAMBIGUATION_RULES = [
         "health_supplement",
     ),
 ]
+
+
+# ---------------------------------------------------------------------------
+# Specific phrase rules
+# ---------------------------------------------------------------------------
+#
+# These rules must run before generic keyword rules.
+#
+# Example:
+#   "chocolate milk"
+#
+# contains both:
+#   chocolate -> CONFECTIONERY
+#   milk      -> DAIRY
+#
+# But the complete phrase "chocolate milk" is a dairy product.
+#
+# More specific product phrases therefore take precedence over
+# isolated keyword matches.
+#
+
+SPECIFIC_PHRASE_RULES = [
+    (
+        r"\bchocolate\s+milk\b",
+        ReferenceCategory.DAIRY,
+        0.85,
+        "specific_chocolate_milk",
+    ),
+    (
+        r"\bstrawberry\s+milk\b",
+        ReferenceCategory.DAIRY,
+        0.85,
+        "specific_strawberry_milk",
+    ),
+    (
+        r"\bflavou?red\s+milk\b",
+        ReferenceCategory.DAIRY,
+        0.85,
+        "specific_flavoured_milk",
+    ),
+    (
+        r"\borange\s+juice\b",
+        ReferenceCategory.BEVERAGES,
+        0.85,
+        "specific_orange_juice",
+    ),
+    (
+        r"\bapple\s+juice\b",
+        ReferenceCategory.BEVERAGES,
+        0.85,
+        "specific_apple_juice",
+    ),
+    (
+        r"\bcranberry\s+juice\b",
+        ReferenceCategory.BEVERAGES,
+        0.85,
+        "specific_cranberry_juice",
+    ),
+    (
+        r"\bgrape\s+juice\b",
+        ReferenceCategory.BEVERAGES,
+        0.85,
+        "specific_grape_juice",
+    ),
+    (
+        r"\bapple\s+cider\b",
+        ReferenceCategory.ALCOHOLIC_BEVERAGES,
+        0.85,
+        "specific_apple_cider",
+    ),
+    (
+        r"\broot\s+beer\b",
+        ReferenceCategory.BEVERAGES,
+        0.85,
+        "specific_root_beer",
+    ),
+    (
+        r"\bginger\s+beer\b",
+        ReferenceCategory.BEVERAGES,
+        0.85,
+        "specific_ginger_beer",
+    ),
+    (
+        r"\bpasta\s+sauce\b",
+        ReferenceCategory.CONDIMENTS_SAUCES,
+        0.85,
+        "specific_pasta_sauce",
+    ),
+    (
+        r"\bbarbecue\s+sauce\b",
+        ReferenceCategory.CONDIMENTS_SAUCES,
+        0.85,
+        "specific_barbecue_sauce",
+    ),
+    (
+        r"\bhot\s+sauce\b",
+        ReferenceCategory.CONDIMENTS_SAUCES,
+        0.85,
+        "specific_hot_sauce",
+    ),
+    (
+        r"\bchicken\s+soup\b",
+        ReferenceCategory.GENERAL_GROCERY,
+        0.85,
+        "specific_chicken_soup",
+    ),
+    (
+        r"\bbeef\s+soup\b",
+        ReferenceCategory.GENERAL_GROCERY,
+        0.85,
+        "specific_beef_soup",
+    ),
+    (
+        r"\bchicken\s+noodle\s+soup\b",
+        ReferenceCategory.GENERAL_GROCERY,
+        0.85,
+        "specific_chicken_noodle_soup",
+    ),
+    (
+        r"\bbaby\s+food\b",
+        ReferenceCategory.BABY_CARE,
+        0.90,
+        "specific_baby_food",
+    ),
+    (
+        r"\bbaby\s+formula\b",
+        ReferenceCategory.BABY_CARE,
+        0.90,
+        "specific_baby_formula",
+    ),
+    (
+        r"\bbaby\s+spinach\b",
+        ReferenceCategory.PRODUCE,
+        0.85,
+        "specific_baby_spinach",
+    ),
+    (
+        r"\bbaby\s+carrots?\b",
+        ReferenceCategory.PRODUCE,
+        0.85,
+        "specific_baby_carrots",
+    ),
+    (
+        r"\bbaking\s+soda\b",
+        ReferenceCategory.GENERAL_GROCERY,
+        0.85,
+        "specific_baking_soda",
+    ),
+    (
+        r"\bbaking\s+powder\b",
+        ReferenceCategory.GENERAL_GROCERY,
+        0.85,
+        "specific_baking_powder",
+    ),
+    (
+        r"\bprotein\s+bar\b",
+        ReferenceCategory.SNACKS,
+        0.85,
+        "specific_protein_bar",
+    ),
+    (
+        r"\bgranola\s+bar\b",
+        ReferenceCategory.SNACKS,
+        0.85,
+        "specific_granola_bar",
+    ),
+    (
+        r"\bpeanut\s+butter\b",
+        ReferenceCategory.GENERAL_GROCERY,
+        0.85,
+        "specific_peanut_butter",
+    ),
+    (
+        r"\bcream\s+cheese\b",
+        ReferenceCategory.DAIRY,
+        0.90,
+        "specific_cream_cheese",
+    ),
+    (
+        r"\bcottage\s+cheese\b",
+        ReferenceCategory.DAIRY,
+        0.90,
+        "specific_cottage_cheese",
+    ),
+    (
+        r"\bice\s+cream\b",
+        ReferenceCategory.FROZEN,
+        0.90,
+        "specific_ice_cream",
+    ),
+]
+
 
 
 CATEGORY_RULES = [
@@ -465,6 +659,23 @@ CATEGORY_RULES = [
 
 
 def classify_taxonomy(product_name: str) -> TaxonomyMatch:
+    """
+    Classify a product using a tiered evidence strategy.
+
+    Resolution order:
+
+    1. Empty input -> AMBIGUOUS
+    2. Explicit disambiguation rules
+    3. Specific multi-word product phrases
+    4. Generic category rules
+    5. One category -> PASS
+    6. Multiple categories -> AMBIGUOUS
+    7. No evidence -> AMBIGUOUS
+
+    The important principle is that a more specific phrase can resolve
+    a conflict created by generic keyword rules.
+    """
+
     text = normalize_text(product_name)
 
     if not text:
@@ -473,17 +684,63 @@ def classify_taxonomy(product_name: str) -> TaxonomyMatch:
             confidence=0.0,
             matched_rule=None,
             status="AMBIGUOUS",
+            resolution="no_evidence",
+            candidates=(),
         )
 
+    # ------------------------------------------------------------------
+    # Tier 1: explicit disambiguation rules
+    # ------------------------------------------------------------------
     for pattern, category, confidence, rule_name in DISAMBIGUATION_RULES:
+        if re.search(pattern, text):
+            if category is None:
+                return TaxonomyMatch(
+                    category=None,
+                    confidence=confidence,
+                    matched_rule=rule_name,
+                    status="AMBIGUOUS",
+                    resolution="disambiguation_rule",
+                    candidates=(),
+                )
+
+            return TaxonomyMatch(
+                category=category,
+                confidence=confidence,
+                matched_rule=rule_name,
+                status="PASS",
+                resolution="disambiguation_rule",
+                candidates=(category.value,),
+            )
+
+    # ------------------------------------------------------------------
+    # Tier 2: specific product phrases
+    # ------------------------------------------------------------------
+    #
+    # These rules intentionally run before generic keyword rules.
+    #
+    # Example:
+    #   "orange juice"
+    #
+    # Generic matching would produce:
+    #   orange -> PRODUCE
+    #   juice  -> BEVERAGES
+    #
+    # The specific phrase "orange juice" resolves that conflict.
+    #
+    for pattern, category, confidence, rule_name in SPECIFIC_PHRASE_RULES:
         if re.search(pattern, text):
             return TaxonomyMatch(
                 category=category,
                 confidence=confidence,
                 matched_rule=rule_name,
-                status="AMBIGUOUS" if category is None else "PASS",
+                status="PASS",
+                resolution="specific_phrase",
+                candidates=(category.value,),
             )
 
+    # ------------------------------------------------------------------
+    # Tier 3: generic category evidence
+    # ------------------------------------------------------------------
     matches = []
 
     for category, patterns in CATEGORY_RULES:
@@ -497,23 +754,44 @@ def classify_taxonomy(product_name: str) -> TaxonomyMatch:
             confidence=0.0,
             matched_rule=None,
             status="AMBIGUOUS",
+            resolution="no_evidence",
+            candidates=(),
         )
 
     categories = list(dict.fromkeys(category for category, _ in matches))
 
-    if len(categories) > 1:
+    # ------------------------------------------------------------------
+    # Tier 4: one unopposed category
+    # ------------------------------------------------------------------
+    if len(categories) == 1:
+        category = categories[0]
+        pattern = matches[0][1]
+
         return TaxonomyMatch(
-            category=None,
-            confidence=0.0,
-            matched_rule="multiple_category_matches",
-            status="AMBIGUOUS",
+            category=category,
+            confidence=0.90,
+            matched_rule=pattern,
+            status="PASS",
+            resolution="unopposed",
+            candidates=(category.value,),
         )
 
-    category, pattern = matches[0]
+    # ------------------------------------------------------------------
+    # Tier 5: genuine conflict
+    # ------------------------------------------------------------------
+    #
+    # Do NOT arbitrarily select a category.
+    #
+    # If generic evidence genuinely supports multiple categories and
+    # no more-specific rule resolved the case, preserve ambiguity.
+    #
+    candidate_values = tuple(category.value for category in categories)
 
     return TaxonomyMatch(
-        category=category,
-        confidence=0.90,
-        matched_rule=pattern,
-        status="PASS",
+        category=None,
+        confidence=0.0,
+        matched_rule="multiple_category_matches",
+        status="AMBIGUOUS",
+        resolution="conflict",
+        candidates=candidate_values,
     )
