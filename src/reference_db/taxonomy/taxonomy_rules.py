@@ -1,9 +1,14 @@
+
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass
 
 from reference_db.taxonomy.reference_taxonomy import ReferenceCategory
+from reference_db.taxonomy.tier1_resolutions import (
+    TIER0_DISAMBIGUATION_RULES,
+    TIER0_NARROW_EXCLUSIONS,
+)
 
 
 @dataclass(frozen=True)
@@ -12,6 +17,9 @@ class TaxonomyMatch:
     confidence: float
     matched_rule: str | None
     status: str
+    resolution: str = "unknown"
+    candidates: tuple[str, ...] = ()
+    other_candidates: tuple[str, ...] = ()
 
 
 def normalize_text(text: str) -> str:
@@ -20,6 +28,14 @@ def normalize_text(text: str) -> str:
     text = re.sub(r"\s+", " ", text).strip()
     return text
 
+
+# ---------------------------------------------------------------------------
+# Explicit disambiguation rules
+# ---------------------------------------------------------------------------
+#
+# These are product-level rules that override generic keyword matching.
+# They run after the semantic Tier-0 rules from tier1_resolutions.py.
+#
 
 DISAMBIGUATION_RULES = [
     (
@@ -121,6 +137,291 @@ DISAMBIGUATION_RULES = [
 ]
 
 
+# ---------------------------------------------------------------------------
+# Specific phrase rules
+# ---------------------------------------------------------------------------
+#
+# More specific product phrases run before generic keyword rules.
+#
+
+SPECIFIC_PHRASE_RULES = [
+    (
+        r"\bchocolate\s+milk\b",
+        ReferenceCategory.DAIRY,
+        0.85,
+        "specific_chocolate_milk",
+    ),
+    (
+        r"\bstrawberry\s+milk\b",
+        ReferenceCategory.DAIRY,
+        0.85,
+        "specific_strawberry_milk",
+    ),
+    (
+        r"\bflavou?red\s+milk\b",
+        ReferenceCategory.DAIRY,
+        0.85,
+        "specific_flavoured_milk",
+    ),
+    (
+        r"\borange\s+juice\b",
+        ReferenceCategory.BEVERAGES,
+        0.85,
+        "specific_orange_juice",
+    ),
+    (
+        r"\bapple\s+juice\b",
+        ReferenceCategory.BEVERAGES,
+        0.85,
+        "specific_apple_juice",
+    ),
+    (
+        r"\bcranberry\s+juice\b",
+        ReferenceCategory.BEVERAGES,
+        0.85,
+        "specific_cranberry_juice",
+    ),
+    (
+        r"\bgrape\s+juice\b",
+        ReferenceCategory.BEVERAGES,
+        0.85,
+        "specific_grape_juice",
+    ),
+    (
+        r"\bapple\s+cider\b",
+        ReferenceCategory.ALCOHOLIC_BEVERAGES,
+        0.85,
+        "specific_apple_cider",
+    ),
+    (
+        r"\broot\s+beer\b",
+        ReferenceCategory.BEVERAGES,
+        0.85,
+        "specific_root_beer",
+    ),
+    (
+        r"\bginger\s+beer\b",
+        ReferenceCategory.BEVERAGES,
+        0.85,
+        "specific_ginger_beer",
+    ),
+    (
+        r"\bpasta\s+sauce\b",
+        ReferenceCategory.CONDIMENTS_SAUCES,
+        0.85,
+        "specific_pasta_sauce",
+    ),
+    (
+        r"\bbarbecue\s+sauce\b",
+        ReferenceCategory.CONDIMENTS_SAUCES,
+        0.85,
+        "specific_barbecue_sauce",
+    ),
+    (
+        r"\bhot\s+sauce\b",
+        ReferenceCategory.CONDIMENTS_SAUCES,
+        0.85,
+        "specific_hot_sauce",
+    ),
+    (
+        r"\bchicken\s+soup\b",
+        ReferenceCategory.GENERAL_GROCERY,
+        0.85,
+        "specific_chicken_soup",
+    ),
+    (
+        r"\bbeef\s+soup\b",
+        ReferenceCategory.GENERAL_GROCERY,
+        0.85,
+        "specific_beef_soup",
+    ),
+    (
+        r"\bchicken\s+noodle\s+soup\b",
+        ReferenceCategory.GENERAL_GROCERY,
+        0.85,
+        "specific_chicken_noodle_soup",
+    ),
+    (
+        r"\bbaby\s+food\b",
+        ReferenceCategory.BABY_CARE,
+        0.90,
+        "specific_baby_food",
+    ),
+    (
+        r"\bbaby\s+formula\b",
+        ReferenceCategory.BABY_CARE,
+        0.90,
+        "specific_baby_formula",
+    ),
+    (
+        r"\bbaby\s+spinach\b",
+        ReferenceCategory.PRODUCE,
+        0.85,
+        "specific_baby_spinach",
+    ),
+    (
+        r"\bbaby\s+carrots?\b",
+        ReferenceCategory.PRODUCE,
+        0.85,
+        "specific_baby_carrots",
+    ),
+    (
+        r"\bbaking\s+soda\b",
+        ReferenceCategory.GENERAL_GROCERY,
+        0.85,
+        "specific_baking_soda",
+    ),
+    (
+        r"\bbaking\s+powder\b",
+        ReferenceCategory.GENERAL_GROCERY,
+        0.85,
+        "specific_baking_powder",
+    ),
+    (
+        r"\bprotein\s+bar\b",
+        ReferenceCategory.SNACKS,
+        0.85,
+        "specific_protein_bar",
+    ),
+    (
+        r"\bgranola\s+bar\b",
+        ReferenceCategory.SNACKS,
+        0.85,
+        "specific_granola_bar",
+    ),
+    (
+        r"\bpeanut\s+butter\b",
+        ReferenceCategory.GENERAL_GROCERY,
+        0.85,
+        "specific_peanut_butter",
+    ),
+    (
+        r"\bcream\s+cheese\b",
+        ReferenceCategory.DAIRY,
+        0.90,
+        "specific_cream_cheese",
+    ),
+    (
+        r"\bcottage\s+cheese\b",
+        ReferenceCategory.DAIRY,
+        0.90,
+        "specific_cottage_cheese",
+    ),
+    (
+        r"\bice\s+cream\b",
+        ReferenceCategory.FROZEN,
+        0.90,
+        "specific_ice_cream",
+    ),
+    (
+        r"\bmilk\s+chocolate\b",
+        ReferenceCategory.CONFECTIONERY,
+        0.85,
+        "specific_milk_chocolate",
+    ),
+    (
+        r"\bchocolate\s+chips?\b.*\b(?:cookies?|muffins?|brownies?|cakes?|scones?)\b",
+        ReferenceCategory.BAKERY,
+        0.90,
+        "specific_chocolate_chip_bakery",
+    ),
+    (
+        r"\b(?:cookies?|muffins?|brownies?|cakes?|scones?)\b.*\bchocolate\s+chips?\b",
+        ReferenceCategory.BAKERY,
+        0.90,
+        "specific_chocolate_chip_bakery",
+    ),
+    (
+        r"\bchocolate\s+chips?\b",
+        ReferenceCategory.CONFECTIONERY,
+        0.85,
+        "specific_chocolate_chips",
+    ),
+    (
+        r"\b(?:potato|tortilla|corn|pita)\s+chips?\b",
+        ReferenceCategory.SNACKS,
+        0.90,
+        "specific_plain_chips",
+    ),
+    (
+        r"\bcranberry\s+cocktail\b",
+        ReferenceCategory.BEVERAGES,
+        0.85,
+        "specific_cranberry_cocktail",
+    ),
+    (
+        r"\biced\s+tea\b",
+        ReferenceCategory.BEVERAGES,
+        0.85,
+        "specific_iced_tea",
+    ),
+    (
+        r"\bsparkling\s+water\b",
+        ReferenceCategory.BEVERAGES,
+        0.90,
+        "specific_sparkling_water",
+    ),
+    (
+        r"\bvegetable\s+juice\b",
+        ReferenceCategory.BEVERAGES,
+        0.85,
+        "specific_vegetable_juice",
+    ),
+    (
+        r"\bjelly\s+beans?\b",
+        ReferenceCategory.CONFECTIONERY,
+        0.90,
+        "specific_jelly_beans",
+    ),
+    (
+        r"\bchili\s+powder\b|\bpowder\s+chili\b",
+        ReferenceCategory.GENERAL_GROCERY,
+        0.85,
+        "specific_chili_powder",
+    ),
+    (
+        r"\bmaple\s+syrup\b",
+        ReferenceCategory.GENERAL_GROCERY,
+        0.85,
+        "specific_maple_syrup",
+    ),
+    (
+        r"\b(?:pumpkin|sunflower|chia|flax|sesame|hemp)\s+seeds?\b",
+        ReferenceCategory.SNACKS,
+        0.85,
+        "specific_seed_snacks",
+    ),
+    (
+        r"\bmixed\s+nuts?\b",
+        ReferenceCategory.SNACKS,
+        0.85,
+        "specific_mixed_nuts",
+    ),
+    (
+        r"\b(?:taco|fajita)\s+kits?\b",
+        ReferenceCategory.CONDIMENTS_SAUCES,
+        0.85,
+        "specific_taco_fajita_kit",
+    ),
+    (
+        r"\bwhip(?:ped)?\s+cream\b",
+        ReferenceCategory.DAIRY,
+        0.85,
+        "specific_whipped_cream",
+    ),
+    (
+        r"\bextract\s+vanilla\b",
+        ReferenceCategory.BAKING_INGREDIENTS,
+        0.85,
+        "specific_extract_vanilla",
+    ),
+]
+
+
+# ---------------------------------------------------------------------------
+# Generic category rules
+# ---------------------------------------------------------------------------
+
 CATEGORY_RULES = [
     (
         ReferenceCategory.DAIRY,
@@ -133,6 +434,7 @@ CATEGORY_RULES = [
             r"\bsour\s+cream\b",
             r"\bcottage\s+cheese\b",
             r"\bcream\s+cheese\b",
+            r"\beggs?\b",
         ],
     ),
     (
@@ -144,17 +446,37 @@ CATEGORY_RULES = [
             r"\bturkey\b",
             r"\blamb\b",
             r"\bveal\b",
-            r"\bsausage\b",
+            r"\bsausages?\b",
+            r"\bwieners?\b",
+            r"\bfranks?\b",
+            r"\bhot\s+dogs?\b",
             r"\bbacon\b",
             r"\bham\b",
             r"\bsalami\b",
             r"\bpepperoni\b",
+            r"\bbologna\b",
+            r"\bprosciutto\b",
+            r"\bpastrami\b",
+            r"\bcharcuterie\b",
+            r"\bdeli\s+meats?\b",
+            r"\bsmoked\s+meat\b",
+            r"\bluncheon\s+meat\b",
+            r"\bmeats?\b",
             r"\bsalmon\b",
             r"\btuna\b",
             r"\bshrimp\b",
             r"\bprawn\b",
             r"\bcrab\b",
             r"\blobster\b",
+            r"\bmussels?\b",
+            r"\bclams?\b",
+            r"\boysters?\b",
+            r"\bscallops?\b",
+            r"\boctopus\b",
+            r"\bsquid\b",
+            r"\bcod\b",
+            r"\btilapia\b",
+            r"\btrout\b",
             r"\bseafood\b",
         ],
     ),
@@ -193,6 +515,7 @@ CATEGORY_RULES = [
             r"\bsmoothie\b",
             r"\benergy\s+drink\b",
             r"\bsports\s+drink\b",
+            r"\bwater\b",
         ],
     ),
     (
@@ -200,17 +523,22 @@ CATEGORY_RULES = [
         [
             r"\bbread\b",
             r"\bbuns?\b",
-            r"\bbagel\b",
-            r"\bcroissant\b",
-            r"\bmuffin\b",
+            r"\bbagels?\b",
+            r"\bcroissants?\b",
+            r"\bmuffins?\b",
             r"\bcake\b",
             r"\bcookies?\b",
             r"\bpastr(?:y|ies)\b",
             r"\bdonuts?\b",
             r"\bdoughnuts?\b",
-            r"\btortilla\b",
-            r"\bflatbread\b",
+            r"\btortillas?\b",
+            r"\bflatbreads?\b",
             r"\bnaan\b",
+            r"\bpies?\b",
+            r"\bcroutons?\b",
+            r"\bmacaroons?\b",
+            r"\bdessert\s+(?:shells?|squares?)\b",
+            r"\bwaffle\s+bowls?\b",
         ],
     ),
     (
@@ -226,6 +554,16 @@ CATEGORY_RULES = [
             r"\bvanilla\s+extract\b",
             r"\bcocoa\s+powder\b",
             r"\bcornstarch\b",
+            r"\bcream\s+of\s+tartar\b",
+            r"\btartar\b",
+            r"\bextracts?\b",
+            r"\bshortening\b",
+            r"\blard\b",
+            r"\bfrostings?\b",
+            r"\bgraham\s+crumbs?\b",
+            r"\bdesiccated\b",
+            r"\b(?:shredded|flaked)\s+coconut\b",
+            r"\bcoconut\s+flakes?\b",
         ],
     ),
     (
@@ -249,11 +587,11 @@ CATEGORY_RULES = [
             r"\blemons?\b",
             r"\blimes?\b",
             r"\bgrapes?\b",
-            r"\bstrawberries?\b",
-            r"\bblueberries?\b",
-            r"\braspberries?\b",
-            r"\bpotatoes?\b",
-            r"\btomatoes?\b",
+            r"\bstrawberr(?:y|ies)\b",
+            r"\bblueberr(?:y|ies)\b",
+            r"\braspberr(?:y|ies)\b",
+            r"\bpotato(?:es)?\b",
+            r"\btomato(?:es)?\b",
             r"\bonions?\b",
             r"\bgarlic\b",
             r"\bcarrots?\b",
@@ -263,6 +601,39 @@ CATEGORY_RULES = [
             r"\bcucumbers?\b",
             r"\bpeppers?\b",
             r"\bmushrooms?\b",
+            r"\bromaine\b",
+            r"\bkale\b",
+            r"\barugula\b",
+            r"\bmango(?:es)?\b",
+            r"\bcranberr(?:y|ies)\b",
+            r"\bcoleslaw\b",
+            r"\bhearts?\b",
+            r"\bcherries\b",
+            r"\bpeach(?:es)?\b",
+            r"\bpears?\b",
+            r"\bavocados?\b",
+            r"\bcelery\b",
+            r"\bcabbage\b",
+            r"\bcauliflower\b",
+            r"\basparagus\b",
+            r"\byams?\b",
+            r"\bpumpkin\b",
+            r"\bsquash\b",
+            r"\bzucchini\b",
+            r"\bjumbleberr(?:y|ies)\b",
+            r"\bstir[-\s]?fry\b",
+            r"\bchil(?:e|i)?es?\b",
+            r"\bspring\s+mix\b",
+            r"\bmixed\s+greens?\b",
+            r"\bbrussel\s+sprouts?\b",
+            r"\bgrapefruit\b",
+            r"\bclementines?\b",
+            r"\bmandarins?\b",
+            r"\bbeets?\b",
+            r"\bradish(?:es)?\b",
+            r"\bturnips?\b",
+            r"\bparsnips?\b",
+            r"\bsweet\s+potatoes?\b",
         ],
     ),
     (
@@ -278,6 +649,18 @@ CATEGORY_RULES = [
             r"\brelish\b",
             r"\bdip\b",
             r"\bspread\b",
+            r"\bhummus\b",
+            r"\bguacamole\b",
+            r"\bmarinade\b",
+            r"\btacos?\b",
+            r"\bolives?\b",
+            r"\bpickles?\b",
+            r"\bgherkins?\b",
+            r"\bpickled\b",
+            r"\bhorseradish\b",
+            r"\bsoy\s+sauce\b",
+            r"\bteriyaki\b",
+            r"\bsriracha\b",
         ],
     ),
     (
@@ -293,6 +676,9 @@ CATEGORY_RULES = [
             r"\bgrapeseed\s+oil\b",
             r"\bvinegar\b",
             r"\bbalsamic\b",
+            r"\bsafflower\s+oil\b",
+            r"\boils?\b.*\b(?:canola|sunflower|vegetable|coconut|avocado|olive|safflower|grapeseed|sesame|peanut)\b",
+            r"\bcooking\s+spray\b",
         ],
     ),
     (
@@ -305,16 +691,26 @@ CATEGORY_RULES = [
             r"\bfudge\b",
             r"\bgumm(?:y|ies)\b",
             r"\blollipop\b",
-            r"\bmarshmallow\b",
+            r"\bmarshmallows?\b",
             r"\blicorice\b",
+            r"\bliquorice\b",
             r"\btruffle\b",
+            r"\bpuddings?\b",
+            r"\braisins?\b",
+            r"\bsultanas?\b",
+            r"\bprunes?\b",
+            r"\bjujubes?\b",
+            r"\bbrittle\b",
+            r"\bconfection\b",
+            r"\blollipops?\b",
+            r"\bdried\s+fruit\b",
         ],
     ),
     (
         ReferenceCategory.SNACKS,
         [
-            r"\bchips\b",
-            r"\bcrisps\b",
+            r"\bchips?\b",
+            r"\bcrisps?\b",
             r"\bpopcorn\b",
             r"\bcrackers?\b",
             r"\bpretzels?\b",
@@ -322,6 +718,27 @@ CATEGORY_RULES = [
             r"\btrail\s+mix\b",
             r"\bgranola\s+bar\b",
             r"\bprotein\s+bar\b",
+            r"\balmonds?\b",
+            r"\bwalnuts?\b",
+            r"\bcashews?\b",
+            r"\bpecans?\b",
+            r"\bpeanuts?\b",
+            r"\bpistachios?\b",
+            r"\bsunflower\s+seeds?\b",
+            r"\bsesame\s+seeds?\b",
+            r"\bmixed\s+nuts?\b",
+            r"\bnut\s+mix(?:es)?\b",
+            r"\bpopping\s+corn\b",
+            r"\bparty\s+mix\b",
+            r"\bpub\s+mix\b",
+            r"\bkettle\s+corn\b",
+            r"\bmacadamia\b",
+            r"\bhazelnuts?\b",
+            r"\bpine\s+nuts?\b",
+            r"\bflax\s+seeds?\b",
+            r"\bchia\s+seeds?\b",
+            r"\bhemp\s+seeds?\b",
+            r"\bsesame\s+seeds?\b",
         ],
     ),
     (
@@ -335,6 +752,13 @@ CATEGORY_RULES = [
             r"\brice\b",
             r"\brisotto\b",
             r"\bcouscous\b",
+            r"\blasagna\b",
+            r"\bgnocchi\b",
+            r"\bquinoa\b",
+            r"\bbarley\b",
+            r"\bfarro\b",
+            r"\bsplit\s+peas?\b",
+            r"\bpolenta\b",
         ],
     ),
     (
@@ -346,6 +770,10 @@ CATEGORY_RULES = [
             r"\bgranola\b",
             r"\bmuesli\b",
             r"\bbreakfast\b",
+            r"\bwaffles?\b",
+            r"\bpancakes?\b",
+            r"\bfrench\s+toast\b",
+            r"\bcrepes?\b",
         ],
     ),
     (
@@ -353,7 +781,15 @@ CATEGORY_RULES = [
         [
             r"\bcanned\b",
             r"\bchickpeas\b",
+            r"\bchick\s+peas?\b",
             r"\blentils\b",
+            r"\bblack\s+beans?\b",
+            r"\bpinto\s+beans?\b",
+            r"\bkidney\s+beans?\b",
+            r"\bnavy\s+beans?\b",
+            r"\brefried\s+beans?\b",
+            r"\bbaked\s+beans?\b",
+            r"\bgarbanzo\s+beans?\b",
             r"\btomato\s+paste\b",
             r"\bcanned\s+soup\b",
             r"\bcanned\s+fruit\b",
@@ -376,6 +812,29 @@ CATEGORY_RULES = [
             r"\bspices?\b",
             r"\bseasoning\b",
             r"\bherbs?\b",
+            r"\bthyme\b",
+            r"\bcinnamon\b",
+            r"\boregano\b",
+            r"\bbasil\b",
+            r"\bpaprika\b",
+            r"\bcumin\b",
+            r"\bginger\b",
+            r"\bnutmeg\b",
+            r"\bparsley\b",
+            r"\bsage\b",
+            r"\bdill\b",
+            r"\brosemary\b",
+            r"\bchives?\b",
+            r"\bcoriander\b",
+            r"\bturmeric\b",
+            r"\bpeppercorns?\b",
+            r"\bcloves?\b",
+            r"\bbay\s+leaves?\b",
+            r"\bstevia\b",
+            r"\bsyrups?\b",
+            r"\bmolasses\b",
+            r"\bmarmalade\b",
+            r"\bsweeteners?\b",
         ],
     ),
     (
@@ -465,6 +924,22 @@ CATEGORY_RULES = [
 
 
 def classify_taxonomy(product_name: str) -> TaxonomyMatch:
+    """
+    Classify a product using a tiered evidence strategy.
+
+    Resolution order:
+
+    1. Empty input -> AMBIGUOUS
+    2. Semantic Tier-0 rules + narrow exclusions
+    3. Explicit disambiguation rules
+    4. Specific product phrases
+    5. Generic category rules
+    6. One category -> PASS
+    7. FROZEN precedence for exactly two candidates
+    8. Multiple categories -> AMBIGUOUS
+    9. No evidence -> AMBIGUOUS
+    """
+
     text = normalize_text(product_name)
 
     if not text:
@@ -473,16 +948,100 @@ def classify_taxonomy(product_name: str) -> TaxonomyMatch:
             confidence=0.0,
             matched_rule=None,
             status="AMBIGUOUS",
+            resolution="no_evidence",
+            candidates=(),
         )
 
+    # ------------------------------------------------------------------
+    # Tier 0: semantic meaning-based disambiguation
+    # ------------------------------------------------------------------
+    #
+    # These rules were created from the Phase-3 conflict audit.
+    # They intentionally run before all generic and specific rules.
+    #
+    # Narrow exclusions protect stable products from accidental
+    # taxonomy changes when a semantic phrase collides with another
+    # product meaning.
+    #
+
+    for pattern, category_value, confidence, rule_name in TIER0_DISAMBIGUATION_RULES:
+        exclusions = TIER0_NARROW_EXCLUSIONS.get(rule_name, ())
+
+        # A matching exclusion vetoes this Tier-0 rule.
+        if any(re.search(exclusion, text) for exclusion in exclusions):
+            continue
+
+        if not re.search(pattern, text):
+            continue
+
+        category = (
+            ReferenceCategory(category_value)
+            if category_value is not None
+            else None
+        )
+
+        if category is None:
+            return TaxonomyMatch(
+                category=None,
+                confidence=confidence,
+                matched_rule=rule_name,
+                status="AMBIGUOUS",
+                resolution="tier0_disambiguation",
+                candidates=(),
+            )
+
+        return TaxonomyMatch(
+            category=category,
+            confidence=confidence,
+            matched_rule=rule_name,
+            status="PASS",
+            resolution="tier0_disambiguation",
+            candidates=(category.value,),
+        )
+
+    # ------------------------------------------------------------------
+    # Tier 1: explicit disambiguation rules
+    # ------------------------------------------------------------------
+
     for pattern, category, confidence, rule_name in DISAMBIGUATION_RULES:
+        if re.search(pattern, text):
+            if category is None:
+                return TaxonomyMatch(
+                    category=None,
+                    confidence=confidence,
+                    matched_rule=rule_name,
+                    status="AMBIGUOUS",
+                    resolution="disambiguation_rule",
+                    candidates=(),
+                )
+
+            return TaxonomyMatch(
+                category=category,
+                confidence=confidence,
+                matched_rule=rule_name,
+                status="PASS",
+                resolution="disambiguation_rule",
+                candidates=(category.value,),
+            )
+
+    # ------------------------------------------------------------------
+    # Tier 2: specific product phrases
+    # ------------------------------------------------------------------
+
+    for pattern, category, confidence, rule_name in SPECIFIC_PHRASE_RULES:
         if re.search(pattern, text):
             return TaxonomyMatch(
                 category=category,
                 confidence=confidence,
                 matched_rule=rule_name,
-                status="AMBIGUOUS" if category is None else "PASS",
+                status="PASS",
+                resolution="specific_phrase",
+                candidates=(category.value,),
             )
+
+    # ------------------------------------------------------------------
+    # Tier 3: generic category evidence
+    # ------------------------------------------------------------------
 
     matches = []
 
@@ -497,23 +1056,74 @@ def classify_taxonomy(product_name: str) -> TaxonomyMatch:
             confidence=0.0,
             matched_rule=None,
             status="AMBIGUOUS",
+            resolution="no_evidence",
+            candidates=(),
         )
 
     categories = list(dict.fromkeys(category for category, _ in matches))
 
-    if len(categories) > 1:
+    # ------------------------------------------------------------------
+    # Tier 4: one unopposed category
+    # ------------------------------------------------------------------
+
+    if len(categories) == 1:
+        category = categories[0]
+        pattern = matches[0][1]
+
         return TaxonomyMatch(
-            category=None,
-            confidence=0.0,
-            matched_rule="multiple_category_matches",
-            status="AMBIGUOUS",
+            category=category,
+            confidence=0.90,
+            matched_rule=pattern,
+            status="PASS",
+            resolution="unopposed",
+            candidates=(category.value,),
         )
 
-    category, pattern = matches[0]
+    # ------------------------------------------------------------------
+    # Tier 5: FROZEN precedence
+    # ------------------------------------------------------------------
+    #
+    # Frozen products dominate when FROZEN is one of exactly two
+    # supporting categories.
+    #
+
+    if len(categories) == 2 and ReferenceCategory.FROZEN in categories:
+        other = next(
+            category
+            for category in categories
+            if category is not ReferenceCategory.FROZEN
+        )
+
+        return TaxonomyMatch(
+            category=ReferenceCategory.FROZEN,
+            confidence=0.90,
+            matched_rule="frozen_precedence",
+            status="PASS",
+            resolution="precedence",
+            candidates=(
+                ReferenceCategory.FROZEN.value,
+                other.value,
+            ),
+            other_candidates=(other.value,),
+        )
+
+    # ------------------------------------------------------------------
+    # Tier 6: genuine conflict
+    # ------------------------------------------------------------------
+    #
+    # Do not arbitrarily select a category.
+    # Preserve ambiguity when multiple generic categories remain.
+    #
+
+    candidate_values = tuple(
+        category.value for category in categories
+    )
 
     return TaxonomyMatch(
-        category=category,
-        confidence=0.90,
-        matched_rule=pattern,
-        status="PASS",
+        category=None,
+        confidence=0.0,
+        matched_rule="multiple_category_matches",
+        status="AMBIGUOUS",
+        resolution="conflict",
+        candidates=candidate_values,
     )

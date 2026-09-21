@@ -15,50 +15,39 @@ class DomainMatch:
 def _is_negated(title_lower: str, match_start: int, match_end: int) -> bool:
     prefix = title_lower[max(0, match_start - 25):match_start]
 
-    neg_patterns = [
-        r"\bno\s+(?:\w+\s+){0,1}$",
-        r"\bwithout\s+(?:\w+\s+){0,1}$",
-        r"\bnon[\s-]+$",
-    ]
+    # Words that are food items — negation of these means the product is NOT food.
+    # Note: "gluten" is NOT here because "gluten-free bread" is still bread.
+    food_words = {
+        "chicken", "beef", "pork", "turkey", "lamb", "veal", "fish",
+        "salmon", "tuna", "shrimp", "seafood", "meat",
+        "milk", "cheese", "yogurt", "butter", "cream", "egg",
+        "bread", "cake", "cookie", "pastry", "pie",
+        "juice", "soda", "coffee", "tea",
+        "pasta", "rice", "noodle",
+        "fruit", "vegetable", "potato", "tomato", "apple", "banana",
+    }
 
-    for pattern in neg_patterns:
-        if re.search(pattern, prefix):
-            return True
-
-    free_match = re.search(r"\bfree[\s-]+(?:\w+\s+){0,1}$", prefix)
-
-    if free_match:
-        attr_words = {
-            "gluten",
-            "fat",
-            "lactose",
-            "sugar",
-            "caffeine",
-            "calorie",
-            "dairy",
-            "nut",
-            "peanut",
-            "soy",
-        }
-
-        free_pos = prefix.rfind("free")
-
-        if free_pos >= 0:
-            before_free = prefix[max(0, free_pos - 15):free_pos]
-            attr_match = re.search(r"\b(\w+)[\s-]*$", before_free)
-
-            if attr_match and attr_match.group(1) in attr_words:
-                return False
-
+    # "no" / "without" directly before the match = negation
+    # (the food word IS the match, so prefix is just "no " / "without ")
+    if re.search(r"\b(?:no|without)\s+$", prefix):
         return True
 
-    zero_match = re.search(r"\bzero\s+(?:\w+\s+){0,1}$", prefix)
+    # "non-X" prefix is always negation
+    if re.search(r"\bnon[\s-]+$", prefix):
+        return True
 
+    # "X free" pattern: only negate if X is a food word
+    # Handles both "gluten free bread" and "free gluten bread" in prefix
+    free_match = re.search(r"\b(\w+)[\s-]*free\b", prefix)
+    if free_match:
+        word_before_free = free_match.group(1)
+        return word_before_free in food_words
+
+    # "zero X" pattern: only negate if X is a food word
+    zero_match = re.search(r"\bzero\s+(\w+)\s*$", prefix)
     if zero_match:
-        words_before = prefix.split()
-
-        if len(words_before) <= 2:
-            return True
+        word_after_zero = zero_match.group(1)
+        return word_after_zero in food_words
 
     return False
 
@@ -235,6 +224,11 @@ DISAMBIGUATION_RULES = [
         0.9,
     ),
     (
+        r"(?=.*\bgingerbread\b)(?=.*\b(?:house|building|train)\b)(?=.*\bkit\b)",
+        "non_food",
+        0.9,
+    ),
+    (
         r"\bcups?\s+\d+\s*pack\b",
         "non_food",
         0.7,
@@ -285,7 +279,7 @@ NONFOOD_SPECIFIC = [
     (r"\b(?:dish\s+(?:detergent|cloth|drying)|dishwashers?)\b", "non_food"),
     (r"\b(?:sponges?|scouring\s+pads?|dusters?|mopping|mops?|scrubbers?)\b", "non_food"),
     (r"\b(?:cloth\s+(?:reusable|cleaning)|fire\s+logs?|epsom\s+salts?)\b", "non_food"),
-    (r"\b(?:compostable\s+liners?|plastic\s+straws?|liners?\s+(?:liner|bag))\b", "non_food"),
+    (r"\b(?:compostable\s+(?:bin\s+)?liners?|plastic\s+straws?|liners?\s+(?:liner|bag)|bin\s+liners?)\b", "non_food"),
     (r"\b(?:shav(?:e|ing)|hand|body|face|moisturiz(?:er|ing)|diaper|antibiotic)\s+creams?\b", "non_food"),
     (r"\b(?:light\s+bulbs?|bulbs?|foil\s+containers?)\b", "non_food"),
     (r"\b(?:muffin|pizza|cake|baking)\s+pans?\b", "non_food"),
@@ -350,7 +344,10 @@ NONFOOD_SPECIFIC = [
     (r"\bultra\s+thin\s+pads?\b", "non_food"),
     (r"\bpads?\s+(?:with\s+wings?|long|super|overnight)\b", "non_food"),
     (r"\b(?:wound\s+)?dressing\s+strips?\b", "non_food"),
-    (r"\b(?:tea|paper|plastic|foam|kitchen)\s+(?:towel|filter|plates?|cups?|bowls?|cutlery|wrap)\b", "non_food"),
+    (
+        r"\b(?:tea|paper|plastic|foam|kitchen)\s+(?:towels?|filters?|plates?|cups?|bowls?|cutlery|wrap)\b",
+        "non_food",
+    ),
     (r"\b(?:coffee|paper|plastic|foam|kitchen)\s+bags?\b", "non_food"),
     (r"\b(?:tea)\s+towels?\b", "non_food"),
     (r"\b(?:dish|laundry|floor|glass|multi-surface)\s+(?:detergent|soap|cleaner|washing\s+liquid)\b", "non_food"),
@@ -398,10 +395,10 @@ FOOD_SPECIFIC = [
     (r"\b(?:mayonnaises?|peanut\s+butter|jams?|honeys?|syrups?|baking|yeast|cocoa)\b", "food"),
     (r"\b(?:chocolates?|candies?|gumm[ie]s?|lollipops?|liquorices?|licorices?|raisins?)\b", "food"),
     (r"\b(?:coleslaws?|frozen|pizzas?|ice\s+cream|sorbets?|tacos?|taco\s+shells?)\b", "food"),
-    (r"\b(?:apples?|bananas?|oranges?|grapes?|strawberries?|blueberries?|cranberries?)\b", "food"),
+    (r"\b(?:apples?|bananas?|oranges?|grapes?|strawberr(?:y|ies)|blueberr(?:y|ies)|cranberr(?:y|ies))\b", "food"),
     (r"\b(?:lemons?|limes?|peaches?|mangos?|pineapples?|cherries?|avocados?)\b", "food"),
-    (r"\b(?:tomatoes?|onions?|garlics?|carrots?|celery|lettuces?|romaines?|salads?)\b", "food"),
-    (r"\b(?:vegetables?|brussels?|broccolis?|spinachs?|kales?|potatoes?|sweet\s+potatoes?)\b", "food"),
+    (r"\b(?:tomato(?:es)?|onions?|garlics?|carrots?|celery|lettuces?|romaines?|salads?|greens\b)\b", "food"),
+    (r"\b(?:vegetables?|brussels?|broccolis?|spinachs?|kales?|potato(?:es)?|sweet\s+potatoes?)\b", "food"),
     (r"\b(?:chips?|popcorns?|nuts?|almonds?|cashews?|walnuts?|peanuts?|pistachios?|pecans?)\b", "food"),
     (r"\b(?:sunflower\s+seeds?|trail\s+mix|snack\s+mix|granola\s+bars?|protein\s+bars?)\b", "food"),
     (r"\b(?:nut\s+bars?|fruit\s+snacks?)\b", "food"),
@@ -414,7 +411,7 @@ FOOD_SPECIFIC = [
     (r"\b(?:peppers?|cucumber|lettuce|spinach|broccoli|cabbage|cauliflower|celery|asparagus)\b", "food"),
     (r"\b(?:kale|yams?|rutabaga|parsnip|turnip|radish|beets?|pumpkin|squash|zucchini)\b", "food"),
     (r"\b(?:horseradish|ginger|pears?|plums?|kiwi|mango|pineapple|papaya|pomegranate|fig)\b", "food"),
-    (r"\b(?:date|cranberries?|clementines?|mandarins?|canned|soup|lentil|split\s+pea|chili)\b", "food"),
+    (r"\b(?:date|cranberr(?:y|ies)|clementines?|mandarins?|canned|soup|lentil|split\s+pea|chili)\b", "food"),
     (r"\b(?:stew|broth|stock|paste|sauce|vinegar|oil|sugar|honey|syrup|flour|rice)\b", "food"),
     (r"\b(?:oat|cereal|granola|pancake|waffle|pie|tart|cheesecake|pastry|croissant)\b", "food"),
     (r"\b(?:cookie|cake|brownie|muffin|bread|bagel|pretzel|crackers?|rusks?)\b", "food"),
