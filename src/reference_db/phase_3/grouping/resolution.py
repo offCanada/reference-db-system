@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Collection
 
 from reference_db.phase_3.grouping.models import (
     GroupDecision,
@@ -43,14 +44,27 @@ def generate_group_id(external_ids: tuple[str, ...]) -> str:
 def resolve_groups(
     external_ids: list[str],
     decisions: list[GroupDecision],
+    isolated_ids: Collection[str] = (),
 ) -> ResolutionResult:
+    """Resolve groups, keeping isolated ids as singleton groups.
+
+    An isolated id is never unioned with another product, so each one
+    forms its own single-member group. Used for taxonomy-AMBIGUOUS
+    products, which must not be merged on similarity alone.
+    """
     union_find = UnionFind(external_ids)
+    isolated = {str(item) for item in isolated_ids}
 
     different_pairs: list[GroupDecision] = []
     review_queue: list[GroupDecision] = []
 
     for decision in decisions:
         if decision.decision == "SAME":
+            if (
+                decision.external_id_a in isolated
+                or decision.external_id_b in isolated
+            ):
+                continue
             union_find.union(
                 decision.external_id_a,
                 decision.external_id_b,

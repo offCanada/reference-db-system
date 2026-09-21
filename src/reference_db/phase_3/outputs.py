@@ -18,6 +18,8 @@ OUTPUT_COLUMNS = {
         "taxonomy_confidence",
         "taxonomy_rule",
         "taxonomy_status",
+        "taxonomy_resolution",
+        "taxonomy_candidates",
     ],
     "product_taxonomy": [
         "external_id",
@@ -25,6 +27,18 @@ OUTPUT_COLUMNS = {
         "taxonomy_confidence",
         "taxonomy_rule",
         "taxonomy_status",
+        "taxonomy_resolution",
+        "taxonomy_candidates",
+    ],
+    "taxonomy_review_queue": [
+        "external_id",
+        "product_name",
+        "taxonomy",
+        "taxonomy_confidence",
+        "taxonomy_rule",
+        "taxonomy_status",
+        "taxonomy_resolution",
+        "taxonomy_candidates",
     ],
     "product_groups": [
         "external_id",

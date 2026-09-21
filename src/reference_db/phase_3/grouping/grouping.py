@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Collection
 from typing import Any
 
 from reference_db.phase_3.grouping.candidates import generate_candidates
@@ -84,6 +85,7 @@ def prepare_products(rows: list[Any]) -> list[ProductRecord]:
 def run_grouping(
     rows: list[Any],
     threshold: float = 0.85,
+    isolated_ids: Collection[str] = (),
 ) -> tuple[
     list[ProductRecord],
     list[Any],
@@ -125,6 +127,7 @@ def run_grouping(
     resolution = resolve_groups(
         external_ids,
         decisions,
+        isolated_ids=isolated_ids,
     )
 
     validation = validate_resolution(

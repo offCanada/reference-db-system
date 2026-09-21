@@ -1,9 +1,18 @@
 from __future__ import annotations
 
+from collections.abc import Collection
+from pathlib import Path
 from typing import Any
+
+import pandas as pd
 
 from reference_db.classification.classifier import classify_product
 from reference_db.phase_3.grouping import run_grouping
+from reference_db.phase_3.outputs import write_phase3_outputs
+
+
+INPUT_FILE = Path("data/phase_2/standardized_products.parquet")
+OUTPUT_DIR = Path("data/phase_3")
 
 
 def _get_value(row: Any, key: str, default: Any = None) -> Any:
@@ -44,6 +53,7 @@ def classify_products(rows: list[Any]) -> list[dict[str, Any]]:
 
 def generate_grouping_results(
     rows: list[Any],
+    isolated_ids: Collection[str] = (),
 ) -> tuple[
     list[dict[str, Any]],
     list[dict[str, Any]],
@@ -55,7 +65,7 @@ def generate_grouping_results(
         decisions,
         resolution,
         validation,
-    ) = run_grouping(rows)
+    ) = run_grouping(rows, isolated_ids=isolated_ids)
 
     grouping_results = [
         {
@@ -103,11 +113,19 @@ def generate_grouping_results(
 def run_phase3(rows: list[Any]) -> dict[str, list[dict[str, Any]]]:
     classification_results = classify_products(rows)
 
+    # Taxonomy-AMBIGUOUS products are never merged: each one keeps its
+    # own singleton group instead of grouping on similarity alone.
+    ambiguous_ids = {
+        str(result["external_id"])
+        for result in classification_results
+        if result["taxonomy_status"] == "AMBIGUOUS"
+    }
+
     (
         grouping_results,
         review_results,
         contradiction_results,
-    ) = generate_grouping_results(rows)
+    ) = generate_grouping_results(rows, isolated_ids=ambiguous_ids)
 
     taxonomy_results = [
         {
@@ -122,10 +140,59 @@ def run_phase3(rows: list[Any]) -> dict[str, list[dict[str, Any]]]:
         for result in classification_results
     ]
 
+    taxonomy_review_queue = [
+        {
+            "external_id": result["external_id"],
+            "product_name": result["product_name"],
+            "taxonomy": result["taxonomy"],
+            "taxonomy_confidence": result["taxonomy_confidence"],
+            "taxonomy_rule": result["taxonomy_rule"],
+            "taxonomy_status": result["taxonomy_status"],
+            "taxonomy_resolution": result["taxonomy_resolution"],
+            "taxonomy_candidates": result["taxonomy_candidates"],
+        }
+        for result in classification_results
+        if result["taxonomy_status"] == "AMBIGUOUS"
+    ]
+
     return {
         "product_classification": classification_results,
         "product_taxonomy": taxonomy_results,
+        "taxonomy_review_queue": taxonomy_review_queue,
         "product_groups": grouping_results,
         "grouping_review_queue": review_results,
         "grouping_contradictions": contradiction_results,
     }
+
+
+def main() -> None:
+    print("=== PHASE 3 ===")
+
+    print(f"Loading: {INPUT_FILE}")
+
+    df = pd.read_parquet(INPUT_FILE)
+
+    print(f"Input rows: {len(df)}")
+
+    rows = df.to_dict(orient="records")
+
+    print("Running classification, taxonomy, and grouping...")
+
+    results = run_phase3(rows)
+
+    print("Writing Phase 3 outputs...")
+
+    paths = write_phase3_outputs(
+        results,
+        output_dir=OUTPUT_DIR,
+    )
+
+    print("\n=== PHASE 3 COMPLETE ===")
+    print(f"Products: {len(df)}")
+
+    for name, path in paths.items():
+        print(f"  {name}: {path}")
+
+
+if __name__ == "__main__":
+    main()
