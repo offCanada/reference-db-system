@@ -10,7 +10,6 @@ from reference_db.classification.classifier import classify_product
 from reference_db.phase_3.grouping import run_grouping
 from reference_db.phase_3.outputs import write_phase3_outputs
 
-
 INPUT_FILE = Path("data/phase_2/standardized_products.parquet")
 OUTPUT_DIR = Path("data/phase_3")
 
@@ -60,9 +59,9 @@ def generate_grouping_results(
     list[dict[str, Any]],
 ]:
     (
-        products,
-        candidates,
-        decisions,
+        _products,
+        _candidates,
+        _decisions,
         resolution,
         validation,
     ) = run_grouping(rows, isolated_ids=isolated_ids)

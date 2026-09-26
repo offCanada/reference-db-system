@@ -24,7 +24,6 @@ from reference_db.phase_6.validation import (
     validate_phase6,
 )
 
-
 PHASE_3_PATH = Path(
     "data/phase_3/product_classification.parquet"
 )

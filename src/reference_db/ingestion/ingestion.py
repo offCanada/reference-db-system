@@ -3,7 +3,6 @@ import duckdb
 
 from reference_db.adapters.base import RetailerAdapter
 
-
 DB_PATH = "compliments_reference_db.duckdb"
 
 

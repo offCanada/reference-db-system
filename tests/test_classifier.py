@@ -1,10 +1,7 @@
 """Tests for the classify_product orchestrator."""
 from __future__ import annotations
 
-import pytest
-
 from reference_db.classification.classifier import classify_product
-from reference_db.taxonomy.reference_taxonomy import ReferenceCategory
 
 
 class TestClassifierIntegration:

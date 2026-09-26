@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import pandas as pd
 
-
 REQUIRED_NUTRI_SCORE_FIELDS = [
     "calories_per_100g",
     "sugars_g_per_100g",

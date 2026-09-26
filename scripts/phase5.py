@@ -23,12 +23,11 @@ CRITICAL: All data outputs are Parquet.
 """
 
 import json
-import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -40,7 +39,7 @@ STATISTICS_DIR = BASE_DIR / "statistics"
 AUDIT_DIR = BASE_DIR / "audit"
 
 VERSION = "1.0.0"
-TIMESTAMP = datetime.now(timezone.utc).isoformat()
+TIMESTAMP = datetime.now(UTC).isoformat()
 
 # Nutrition fields (all 17 numeric nutrition columns)
 NUTRITION_FIELDS = [
@@ -378,7 +377,6 @@ def build_statistics(outputs: dict) -> dict:
 def build_validation(outputs: dict, statistics: dict) -> dict:
     """Build Phase 5 validation."""
     product_nutrition = outputs["product_nutrition_mapping.parquet"]
-    nutrition_per_100g = outputs["nutrition_per_100g.parquet"]
 
     checks = {}
 
@@ -460,7 +458,7 @@ def main():
     # 1. LOAD DATA
     # ------------------------------------------------------------------
     log("Loading data ...")
-    nutrition, products, p3_mapping, p4_mapping = load_data()
+    nutrition, _products, p3_mapping, p4_mapping = load_data()
 
     # ------------------------------------------------------------------
     # 2. NUTRITION CLEANING
@@ -521,7 +519,7 @@ def main():
         for k, v in statistics.get("normalization", {}).items()
     ])
     stats_df.to_parquet(stats_path, index=False)
-    log(f"  Saved phase5_statistics.parquet")
+    log("  Saved phase5_statistics.parquet")
 
     # Save validation
     val_path = OUTPUT_DIR / "phase5_validation.parquet"
@@ -530,7 +528,7 @@ def main():
         for k, v in validation.items()
     ])
     val_df.to_parquet(val_path, index=False)
-    log(f"  Saved phase5_validation.parquet")
+    log("  Saved phase5_validation.parquet")
 
     # Save JSON versions
     with open(VALIDATION_DIR / "phase5_validation.json", "w") as f:

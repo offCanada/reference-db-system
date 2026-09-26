@@ -5,7 +5,6 @@ from typing import Any
 
 import pandas as pd
 
-
 OUTPUT_COLUMNS = {
     "product_classification": [
         "external_id",

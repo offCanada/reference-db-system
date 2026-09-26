@@ -14,12 +14,10 @@ This module implements:
 DO NOT modify Phase 1–5 production code or outputs.
 """
 
-import pandas as pd
-import numpy as np
-import json
 import os
-import hashlib
-from datetime import datetime
+from datetime import UTC, datetime
+
+import pandas as pd
 
 # ============================================================================
 # CONSTANTS
@@ -275,7 +273,7 @@ def run_phase6():
     print("=" * 60)
     print(f"Algorithm: {ALGORITHM_VERSION}")
     print(f"Source: {ALGORITHM_SOURCE}")
-    print(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    print(f"Date: {datetime.now(UTC).strftime('%Y-%m-%d %H:%M')}")
     print()
 
     # ----------------------------------------------------------------
@@ -404,7 +402,7 @@ def run_phase6():
 
     # Grade distribution
     grade_dist = df[df['nutri_score_calculated']]['nutri_score_grade'].value_counts().sort_index()
-    print(f"  Grade distribution:")
+    print("  Grade distribution:")
     for g, c in grade_dist.items():
         print(f"    {g}: {c}")
 
@@ -426,7 +424,7 @@ def run_phase6():
         df['mapping_note'] = zip(*df['reference_db_taxonomy'].apply(map_agribalyse))
 
     conf_dist = df['mapping_confidence'].value_counts()
-    print(f"  Mapping confidence distribution:")
+    print("  Mapping confidence distribution:")
     for c, n in conf_dist.items():
         print(f"    {c}: {n}")
 
@@ -571,9 +569,6 @@ def run_phase6():
     if not scored_grades.issubset(valid_grades):
         errors.append(f"Invalid grades: {scored_grades - valid_grades}")
 
-    # No fake CIQUAL
-    fake_ciqual = agribalyse_mapping[agribalyse_mapping['agribalyse_ciqual'].str.contains(r'^\d{5}$', na=False)]
-    # This is OK — we use xxx patterns, not exact codes
 
     if errors:
         print("\nVALIDATION ERRORS:")
@@ -589,32 +584,32 @@ def run_phase6():
     print("STATISTICS")
     print("=" * 60)
 
-    print(f"\nInput verification:")
+    print("\nInput verification:")
     print(f"  Total products: {df.shape[0]} (expected 4440)")
     print(f"  Food: {df[df['product_domain']=='food'].shape[0]} (expected 2803)")
     print(f"  Unknown: {df[df['product_domain']=='unknown'].shape[0]} (expected 1243)")
     print(f"  Non-food: {df[df['product_domain']=='non_food'].shape[0]} (expected 394)")
 
-    print(f"\nNutri-Score eligibility:")
+    print("\nNutri-Score eligibility:")
     print(f"  Eligible: {elig_counts.get('ELIGIBLE', 0)} (8.2% of total)")
     print(f"  Not eligible: {elig_counts.get('NOT_ELIGIBLE', 0)} (91.8% of total)")
 
-    print(f"\nNutri-Score results (among eligible):")
+    print("\nNutri-Score results (among eligible):")
     for g in ['A', 'B', 'C', 'D', 'E']:
         c = grade_dist.get(g, 0)
         total_eligible = elig_counts.get('ELIGIBLE', 0)
         print(f"  {g}: {c} ({c/total_eligible*100:.1f}%)")
 
-    print(f"\nFVL estimation:")
+    print("\nFVL estimation:")
     print(f"  90% (PRODUCE): {df[df['fvl_percent']==90].shape[0]}")
     print(f"  0% (other): {df[df['fvl_percent']==0].shape[0]}")
 
-    print(f"\nAgribalyse mapping:")
+    print("\nAgribalyse mapping:")
     for c in ['HIGH', 'MEDIUM', 'LOW', 'NONE']:
         n = conf_dist.get(c, 0)
         print(f"  {c}: {n} ({n/df.shape[0]*100:.1f}%)")
 
-    print(f"\nLLM usage: 0 (deterministic algorithm only)")
+    print("\nLLM usage: 0 (deterministic algorithm only)")
 
     return product_scores, agribalyse_mapping, exclusions, review_queue, summary
 

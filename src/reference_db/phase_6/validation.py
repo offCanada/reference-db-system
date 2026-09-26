@@ -8,11 +8,6 @@ def _calculated_mask(df: pd.DataFrame) -> pd.Series:
     return df["nutri_score_calculated"].astype("boolean").fillna(False)
 
 
-def _calculated_mask(df: pd.DataFrame) -> pd.Series:
-    """Return a stable boolean mask for calculated Nutri-Score rows."""
-    return df["nutri_score_calculated"].astype("boolean").fillna(False)
-
-
 def validate_phase6(
     result: pd.DataFrame,
     expected_rows: int,

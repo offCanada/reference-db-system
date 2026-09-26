@@ -4,9 +4,9 @@ import math
 from typing import Any
 
 from reference_db.phase_3.grouping.models import (
+    IDENTITY_COLUMNS,
     CandidatePair,
     GroupDecision,
-    IDENTITY_COLUMNS,
     ProductRecord,
 )
 

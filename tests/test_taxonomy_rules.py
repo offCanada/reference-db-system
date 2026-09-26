@@ -1,8 +1,6 @@
 """Tests for taxonomy classification rules."""
 from __future__ import annotations
 
-import pytest
-
 from reference_db.taxonomy.reference_taxonomy import ReferenceCategory
 from reference_db.taxonomy.taxonomy_rules import classify_taxonomy
 

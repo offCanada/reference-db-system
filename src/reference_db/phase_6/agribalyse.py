@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import pandas as pd
 
-
 AGRIBALYSE_VERSION = "3.2"
 
 MAPPING_VERSION = "phase6-taxonomy-v1"

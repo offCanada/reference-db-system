@@ -13,9 +13,9 @@ from reference_db.phase_4.variants import (
 
 
 def run_phase4(
-    phase2_path: str = "phase_2/standardized_products.parquet",
-    phase3_path: str = "phase_3/product_groups.parquet",
-    output_dir: str = "phase_4",
+    phase2_path: str = "data/phase_2/standardized_products.parquet",
+    phase3_path: str = "data/phase_3/product_groups.parquet",
+    output_dir: str = "data/phase_4",
 ) -> dict:
     phase2 = pd.read_parquet(phase2_path)
     phase3 = pd.read_parquet(phase3_path)

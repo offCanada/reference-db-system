@@ -1,6 +1,6 @@
 from pathlib import Path
-import pandas as pd
 
+import pandas as pd
 
 BASE_DIR = Path(__file__).resolve().parents[3]
 PRODUCTION_DIR = BASE_DIR / "data" / "production"

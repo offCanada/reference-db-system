@@ -1,8 +1,6 @@
 """Tests for domain classification rules."""
 from __future__ import annotations
 
-import pytest
-
 from reference_db.classification.domain_rules import _is_negated
 
 
