@@ -19,9 +19,7 @@ from datetime import UTC, datetime
 
 import pandas as pd
 
-# ============================================================================
 # CONSTANTS
-# ============================================================================
 
 ALGORITHM_VERSION = "nutri_score_2023"
 ALGORITHM_SOURCE = "Eurofins referencing Santé Publique France FAQ v21.Dec.2023"
@@ -38,9 +36,7 @@ REQUIRED_FIELDS = [
     'sodium_mg_per_100g', 'fibre_g_per_100g', 'protein_g_per_100g'
 ]
 
-# ============================================================================
 # NUTRI-SCORE 2023 POINT TABLES (General Food)
-# ============================================================================
 
 # Negative points: energy_kj, saturated_fat_g, sugar_g, salt_g
 # Each table: list of (upper_bound, points) — score is points where value <= upper_bound
@@ -151,9 +147,7 @@ AGRIBALYSE_MAP = {
     'HOUSEHOLD_SUPPLIES': {'category': 'NONE', 'ciqual': 'NONE', 'confidence': 'NONE'},
 }
 
-# ============================================================================
 # SCORING FUNCTIONS
-# ============================================================================
 
 def get_points(value, table):
     """Get points from a threshold table. Returns points where value <= threshold."""
@@ -251,9 +245,7 @@ def calculate_nutri_score_beverage(energy_kj, sat_fat_g, sugar_g, salt_g,
     return negative, positive, raw_score, grade
 
 
-# ============================================================================
 # FVL ESTIMATION
-# ============================================================================
 
 def estimate_fvl(taxonomy):
     """Estimate FVL percentage from taxonomy."""
@@ -262,9 +254,7 @@ def estimate_fvl(taxonomy):
     return 0, 'taxonomy_estimate', 'LOW', 'not_in_data'
 
 
-# ============================================================================
 # MAIN PIPELINE
-# ============================================================================
 
 def run_phase6():
     """Execute the complete Phase 6 pipeline."""
@@ -276,9 +266,7 @@ def run_phase6():
     print(f"Date: {datetime.now(UTC).strftime('%Y-%m-%d %H:%M')}")
     print()
 
-    # ----------------------------------------------------------------
     # 1. LOAD INPUTS
-    # ----------------------------------------------------------------
     print("[1/8] Loading inputs...")
 
     phase5_dir = os.path.join(PROJECT_DIR, 'phase5', 'outputs')
@@ -295,9 +283,7 @@ def run_phase6():
     print(f"  product_group_mapping: {pgm.shape}")
     print(f"  product_variant_mapping: {pvm.shape}")
 
-    # ----------------------------------------------------------------
     # 2. MERGE DATA
-    # ----------------------------------------------------------------
     print("\n[2/8] Merging data...")
 
     domain_map = pgm[['external_id', 'product_domain', 'reference_db_taxonomy', 'group_id', 'core_title']].drop_duplicates('external_id')
@@ -310,9 +296,7 @@ def run_phase6():
 
     print(f"  Merged: {df.shape}")
 
-    # ----------------------------------------------------------------
     # 3. ELIGIBILITY
-    # ----------------------------------------------------------------
     print("\n[3/8] Computing eligibility...")
 
     df['has_all_required'] = df[REQUIRED_FIELDS].notna().all(axis=1)
@@ -337,9 +321,7 @@ def run_phase6():
     print(f"  ELIGIBLE: {elig_counts.get('ELIGIBLE', 0)}")
     print(f"  NOT_ELIGIBLE: {elig_counts.get('NOT_ELIGIBLE', 0)}")
 
-    # ----------------------------------------------------------------
     # 4. FVL ESTIMATION
-    # ----------------------------------------------------------------
     print("\n[4/8] Estimating FVL...")
 
     df['fvl_percent'], df['fvl_method'], df['fvl_confidence'], df['fvl_source'] = zip(
@@ -349,9 +331,7 @@ def run_phase6():
     fvl_dist = df['fvl_percent'].value_counts().sort_index()
     print(f"  FVL distribution: {dict(fvl_dist)}")
 
-    # ----------------------------------------------------------------
     # 5. NUTRI-SCORE CALCULATION
-    # ----------------------------------------------------------------
     print("\n[5/8] Calculating Nutri-Score...")
 
     # Convert units
@@ -406,9 +386,7 @@ def run_phase6():
     for g, c in grade_dist.items():
         print(f"    {g}: {c}")
 
-    # ----------------------------------------------------------------
     # 6. AGRIBALYSE MAPPING
-    # ----------------------------------------------------------------
     print("\n[6/8] Mapping Agribalyse categories...")
 
     def map_agribalyse(taxonomy):
@@ -428,9 +406,7 @@ def run_phase6():
     for c, n in conf_dist.items():
         print(f"    {c}: {n}")
 
-    # ----------------------------------------------------------------
     # 7. CREATE OUTPUT TABLES
-    # ----------------------------------------------------------------
     print("\n[7/8] Creating output tables...")
 
     # Table 1: phase6_product_scores.parquet (product-level, one row per external_id)
@@ -504,9 +480,7 @@ def run_phase6():
     summary = pd.DataFrame(summary_data)
     summary['value'] = summary['value'].astype(str)
 
-    # ----------------------------------------------------------------
     # 8. SAVE OUTPUTS
-    # ----------------------------------------------------------------
     print("\n[8/8] Saving outputs...")
 
     output_dir = os.path.join(BASE_DIR, 'outputs')
@@ -530,9 +504,7 @@ def run_phase6():
     print(f"  - phase6_review_queue.parquet ({review_queue.shape})")
     print(f"  - phase6_summary.parquet ({summary.shape})")
 
-    # ----------------------------------------------------------------
     # VALIDATION
-    # ----------------------------------------------------------------
     print("\n" + "=" * 60)
     print("VALIDATION")
     print("=" * 60)
@@ -577,9 +549,7 @@ def run_phase6():
     else:
         print("\nALL VALIDATION CHECKS PASSED")
 
-    # ----------------------------------------------------------------
     # STATISTICS
-    # ----------------------------------------------------------------
     print("\n" + "=" * 60)
     print("STATISTICS")
     print("=" * 60)
