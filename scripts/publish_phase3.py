@@ -1,9 +1,6 @@
 from pathlib import Path
 
-from reference_db.publishing.huggingface import upload_files
-
-
-OUTPUT_DIR = Path("phase_3")
+OUTPUT_DIR = Path("data/phase_3")
 
 FILES = [
     OUTPUT_DIR / "product_classification.parquet",

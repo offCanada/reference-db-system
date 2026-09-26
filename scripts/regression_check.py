@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Full regression: classify all phase_2 products, compare to prev PASS set."""
-import pandas as pd
 import pickle
 import sys
 from multiprocessing import Pool, cpu_count
+
+import pandas as pd
 
 sys.path.insert(0, "/home/sara/reference-db-system/src")
 from reference_db.classification.classifier import classify_product
@@ -23,7 +24,7 @@ def classify_one(name):
             "domain_rule": r.domain_rule,
             "tax_rule": r.taxonomy_rule,
         }
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 — keep one product failure from aborting the full regression
         return {"taxonomy": None, "tax_status": f"ERROR:{e}", "tax_check": None,
                 "domain": None, "domain_conf": 0, "domain_rule": None, "tax_rule": None}
 
@@ -39,7 +40,8 @@ def main():
     print("saving", out.shape, flush=True)
     out.to_pickle(OUT)
 
-    prev = pickle.load(open("/tmp/phase3_backup/prev_pass.pkl", "rb"))
+    with open("/tmp/phase3_backup/prev_pass.pkl", "rb") as f:
+        prev = pickle.load(f)
     new_pass = set(out.loc[out["tax_status"] == "PASS", "external_id"])
     dropped = prev - new_pass
     print("new PASS:", len(new_pass), "prev:", len(prev), "dropped:", len(dropped), flush=True)

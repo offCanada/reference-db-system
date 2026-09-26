@@ -58,8 +58,7 @@ reference-db/
 │       ├── phase_3/
 │       ├── phase_4/
 │       ├── phase_5/
-│       ├── phase_6/
-│       └── orchestration/
+│       └── phase_6/
 │
 ├── tests/
 ├── data/
@@ -68,24 +67,19 @@ reference-db/
 └── .gitignore
 ```
 
-## Supported Retailers
+## Retailer Adapters
 
-The architecture is designed to support:
+The current implementation includes:
 
-* Walmart
-* Costco
-* Metro
-* Voilà / Sobeys
+* Compliments
 
-Additional retailers can be added through new adapters without changing the generic pipeline phases.
+The adapter architecture is designed to support additional retailers such as Walmart, Costco, Metro, and Voilà / Sobeys. New retailer-specific adapters can be added without changing the generic pipeline phases.
 
 ## Technology Stack
 
 * Python
 * dlt — data ingestion
 * DuckDB — analytical storage
-* dbt — SQL transformations and data quality tests
-* Prefect — workflow orchestration
 * pytest — testing
 
 ## Design Principles

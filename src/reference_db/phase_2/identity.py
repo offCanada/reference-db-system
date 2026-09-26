@@ -3,22 +3,21 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
 
-
 HF_DATASET = "saraNour/compliments-reference-db"
 
-INPUT_FILE = "phase_1/validated_products.parquet"
-OUTPUT_FILE = "phase_2/standardized_products.parquet"
-STATISTICS_FILE = "phase_2/statistics/identity_statistics.json"
-VALIDATION_FILE = "phase_2/validation/validation_report.json"
+INPUT_FILE = "data/phase_1/validated_products.parquet"
+OUTPUT_FILE = "data/phase_2/standardized_products.parquet"
+STATISTICS_FILE = "data/phase_2/statistics/identity_statistics.json"
+VALIDATION_FILE = "data/phase_2/validation/validation_report.json"
 
 VERSION = "4.1.0"
-TIMESTAMP = datetime.now(timezone.utc).isoformat()
+TIMESTAMP = datetime.now(UTC).isoformat()
 
 REQUIRED_COLUMNS = [
     "external_id",
@@ -372,24 +371,34 @@ def build_variant_attributes(
             r"^\s*(\d+(?:\.\d+)?)\s*(litres?|liters?)\b",
             r"(\d+(?:\.\d+)?)\s*[-]?\s*(inch|inches)\b",
             r"(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)\s*(g|kg|ml|l|oz|lb|mg|litres?|liters?)\s*$",
-            r"(\d+(?:\.\d+)?)\s*(g|kg|ml|l|oz|lb|mg|litres?|liters?)"
-            r"(?:\s+(\d+)\s*(?:count|ea|packs?|pieces?|bags?|boxes?))?\s*$",
-            r"(\d+(?:\.\d+)?)\s*(?:inch|inches)\s*x\s*"
-            r"(\d+(?:\.\d+)?)\s*(feet|foot|yards?)\s*$",
+            (
+                r"(\d+(?:\.\d+)?)\s*(g|kg|ml|l|oz|lb|mg|litres?|liters?)"
+                r"(?:\s+(\d+)\s*(?:count|ea|packs?|pieces?|bags?|boxes?))?\s*$"
+            ),
+            (
+                r"(\d+(?:\.\d+)?)\s*(?:inch|inches)\s*x\s*"
+                r"(\d+(?:\.\d+)?)\s*(feet|foot|yards?)\s*$"
+            ),
             r"(\d+(?:\.\d+)?)\s*(?:inch|inches)\s*$",
             r"(\d+(?:\.\d+)?)\s*(feet|foot|yards?)s?\s*$",
             r"(\d+(?:\.\d+)?)\s*(m|meter|meters|cm|centimeter|centimeters)\s*$",
-            r"(\d+(?:\.\d+)?)\s*(g|kg|ml|l|oz|lb|mg|litres?|liters?)\s+"
-            r"(\d+)\s*(?:count|ea|packs?|pieces?|bags?|boxes?|"
-            r"softgel\s+capsules?|capsules?|tablets?|pouches?)\s*$",
-            r"(\d+)\s*(?:per\s+pack|count|ea|pack|piece|slice|cups?|"
-            r"tablets?|caplets?|capsules?|sachets?|sticks?|bars?|"
-            r"rolls?|sheets?|bags?|bulbs?|lamps?|lozenges?|plugs?|"
-            r"pairs?|liners?|wipes?|strips?|sprays?|cots?|"
-            r"napkins?|boxes?|pods?|pouches?|cases?|"
-            r"softgel\s+capsules?|tea\s+bags?|k-cups?|thighs?)s?\s*$",
-            r"(\d+)\s+(?:sterile\s+)?(?:bandages?|pouches?|cases?|"
-            r"k-cups?|thighs?|tests?|softgel\s+capsules?)\s*$",
+            (
+                r"(\d+(?:\.\d+)?)\s*(g|kg|ml|l|oz|lb|mg|litres?|liters?)\s+"
+                r"(\d+)\s*(?:count|ea|packs?|pieces?|bags?|boxes?|"
+                r"softgel\s+capsules?|capsules?|tablets?|pouches?)\s*$"
+            ),
+            (
+                r"(\d+)\s*(?:per\s+pack|count|ea|pack|piece|slice|cups?|"
+                r"tablets?|caplets?|capsules?|sachets?|sticks?|bars?|"
+                r"rolls?|sheets?|bags?|bulbs?|lamps?|lozenges?|plugs?|"
+                r"pairs?|liners?|wipes?|strips?|sprays?|cots?|"
+                r"napkins?|boxes?|pods?|pouches?|cases?|"
+                r"softgel\s+capsules?|tea\s+bags?|k-cups?|thighs?)s?\s*$"
+            ),
+            (
+                r"(\d+)\s+(?:sterile\s+)?(?:bandages?|pouches?|cases?|"
+                r"k-cups?|thighs?|tests?|softgel\s+capsules?)\s*$"
+            ),
             r"twin\s+pack\s*$",
         ]
 
@@ -1067,12 +1076,12 @@ def build_statistics(
         "version": VERSION,
         "timestamp": TIMESTAMP,
         "input": {
-            "row_count": int(len(df_in)),
-            "column_count": int(len(df_in.columns)),
+            "row_count": len(df_in),
+            "column_count": len(df_in.columns),
         },
         "output": {
-            "row_count": int(len(df_out)),
-            "column_count": int(len(df_out.columns)),
+            "row_count": len(df_out),
+            "column_count": len(df_out.columns),
             "columns_added": sorted(
                 set(df_out.columns)
                 - set(df_in.columns)
@@ -1187,8 +1196,8 @@ def build_validation_report(
     checks: dict[str, Any] = {}
 
     checks["row_count"] = {
-        "input": int(len(df_in)),
-        "output": int(len(df_out)),
+        "input": len(df_in),
+        "output": len(df_out),
         "pass": len(df_in) == len(df_out),
     }
 

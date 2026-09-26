@@ -1,10 +1,9 @@
 
-from pathlib import Path
 import json
+from pathlib import Path
 
 import duckdb
 import pandas as pd
-
 
 # Configuration
 

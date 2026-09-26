@@ -61,7 +61,8 @@ def main() -> None:
     out["external_id"] = df["external_id"].astype(str).values
     out.to_parquet(STREAM, index=False)
 
-    prev = pickle.load(open(PREV_PASS, "rb"))
+    with open(PREV_PASS, "rb") as f:
+        prev = pickle.load(f)
     new_pass = set(out.loc[out["taxonomy_status"] == "PASS", "external_id"])
     print(f"prev PASS: {len(prev)}  new PASS: {len(new_pass)}", flush=True)
     print(f"prev still PASS (all): {prev.issubset(new_pass)}", flush=True)

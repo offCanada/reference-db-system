@@ -4,7 +4,6 @@ from pathlib import Path
 
 import pandas as pd
 
-
 PRODUCT_SCORE_COLUMNS = [
     "external_id",
     "group_id",

@@ -157,7 +157,6 @@ def group_product(
         functional_variant=None,
     )
 
-    products = [product]
     resolution = resolve_groups(
         [product.external_id],
         [],

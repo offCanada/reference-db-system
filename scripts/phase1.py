@@ -28,12 +28,10 @@ Cleaning operations (Phase 1 = data quality foundation):
 
 import json
 import re
-import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pandas as pd
-import numpy as np
 from huggingface_hub import hf_hub_download
 
 # ---------------------------------------------------------------------------
@@ -48,7 +46,7 @@ VALIDATION_DIR = Path(__file__).resolve().parent.parent / "validation"
 STATISTICS_DIR = Path(__file__).resolve().parent.parent / "statistics"
 
 VERSION = "3.0.0"
-TIMESTAMP = datetime.now(timezone.utc).isoformat()
+TIMESTAMP = datetime.now(UTC).isoformat()
 
 
 def log(msg: str) -> None:
@@ -166,7 +164,7 @@ def audit_upcs(df):
         "unique_count": int(upc.nunique()),
         "invalid_format_count": int((~valid_mask).sum()),
         "invalid_format_examples": invalid_upcs[["external_id", "title", "upc"]].head(10).to_dict("records"),
-        "reused_upc_count": int(len(reused)),
+        "reused_upc_count": len(reused),
         "reused_upc_total_rows": int(reused.sum()),
         "reused_upc_examples": reused_analysis[:15],
     }
@@ -225,7 +223,7 @@ def audit_titles(df):
         "leading_trailing_whitespace": int(has_leading),
         "repeated_whitespace": int(has_repeated_ws),
         "empty_titles": int(empty_titles),
-        "duplicated_title_count": int(len(duplicated_titles)),
+        "duplicated_title_count": len(duplicated_titles),
         "duplicated_title_total_rows": int(duplicated_titles.sum()),
         "duplicated_title_examples": {str(k): int(v) for k, v in list(duplicated_titles.head(10).items())},
     }
@@ -340,9 +338,6 @@ def main():
     df_raw = pd.read_parquet(path)
     log(f"Loaded: {df_raw.shape[0]} rows, {df_raw.shape[1]} columns")
 
-    # Preserve raw copy for provenance
-    df_raw_copy = df_raw.copy()
-
     # ------------------------------------------------------------------
     # 2. SCHEMA VALIDATION
     # ------------------------------------------------------------------
@@ -372,15 +367,7 @@ def main():
         }
 
     dup_info_raw = audit_duplicates(df_raw)
-    upc_info_raw = audit_upcs(df_raw)
-    ext_info_raw = audit_external_ids(df_raw)
-    title_info_raw = audit_titles(df_raw)
     size_info_raw = audit_sizes(df_raw)
-    brand_info_raw = {
-        "unique_count": int(df_raw["brand"].nunique()),
-        "distribution": {str(k): int(v) for k, v in df_raw["brand"].value_counts().items()},
-    }
-
     # ------------------------------------------------------------------
     # 4. CLEANING
     # ------------------------------------------------------------------
@@ -450,7 +437,6 @@ def main():
     upc_info_clean = audit_upcs(df)
     ext_info_clean = audit_external_ids(df)
     title_info_clean = audit_titles(df)
-    size_info_clean = audit_sizes(df)
     brand_info_clean = {
         "unique_count": int(df["brand_clean"].nunique()),
         "distribution": {str(k): int(v) for k, v in df["brand_clean"].value_counts().items()},
@@ -543,7 +529,7 @@ def main():
     log(f"Input:  {df_raw.shape[0]} rows, {df_raw.shape[1]} columns")
     log(f"Output: {df.shape[0]} rows, {df.shape[1]} columns")
     log(f"Columns dropped: {null_100pct}")
-    log(f"Columns added: ['brand_clean', 'title_clean']")
+    log("Columns added: ['brand_clean', 'title_clean']")
     log(f"Validation: {validation['result']}")
     if failures:
         log(f"Failures: {failures}")

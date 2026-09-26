@@ -6,7 +6,6 @@ from typing import Any
 import pandas as pd
 from huggingface_hub import hf_hub_download
 
-
 HF_DATASET = "saraNour/compliments-brand"
 NUTRITION_FILE = "raw_data/nutrition.parquet"
 

@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-import math
-
 import pandas as pd
-
 
 ALGORITHM_VERSION = "Nutri-Score-2023"
 

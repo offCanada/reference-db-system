@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Iterator
+from collections.abc import Iterator
 
 
 class RetailerAdapter(ABC):
@@ -9,14 +9,11 @@ class RetailerAdapter(ABC):
     @abstractmethod
     def retailer(self) -> str:
         """Return the retailer name."""
-        pass
 
     @abstractmethod
     def products(self) -> Iterator[dict]:
         """Yield standardized product records."""
-        pass
 
     @abstractmethod
     def nutrition(self) -> Iterator[dict]:
         """Yield standardized nutrition records."""
-        pass

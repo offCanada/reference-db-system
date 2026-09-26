@@ -2,7 +2,6 @@ import duckdb
 
 from .base import RetailerAdapter
 
-
 PRODUCTS_SOURCE = (
     "hf://datasets/saraNour/compliments-brand/"
     "raw_data/products.parquet"
