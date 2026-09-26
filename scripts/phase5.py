@@ -29,9 +29,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-# ---------------------------------------------------------------------------
 # Configuration
-# ---------------------------------------------------------------------------
 BASE_DIR = Path(__file__).resolve().parent.parent
 OUTPUT_DIR = BASE_DIR / "outputs"
 VALIDATION_DIR = BASE_DIR / "validation"
@@ -61,9 +59,7 @@ def log(msg: str) -> None:
     print(f"[Phase5] {msg}")
 
 
-# ---------------------------------------------------------------------------
 # 1. LOAD DATA
-# ---------------------------------------------------------------------------
 
 def load_data():
     """Load all required input data."""
@@ -99,9 +95,7 @@ def load_data():
     return nutrition, products, p3_mapping, p4_mapping
 
 
-# ---------------------------------------------------------------------------
 # 2. NUTRITION CLEANING & VALIDATION
-# ---------------------------------------------------------------------------
 
 def clean_nutrition(nutrition: pd.DataFrame) -> pd.DataFrame:
     """
@@ -144,9 +138,7 @@ def clean_nutrition(nutrition: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-# ---------------------------------------------------------------------------
 # 3. NUTRITION NORMALIZATION (per 100g)
-# ---------------------------------------------------------------------------
 
 def parse_serving_size(serving_size_str):
     """
@@ -253,9 +245,7 @@ def normalize_per_100g(nutrition_cleaned: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-# ---------------------------------------------------------------------------
 # 4. PRODUCT ↔ NUTRITION MATCHING
-# ---------------------------------------------------------------------------
 
 def match_product_nutrition(
     nutrition_per_100g: pd.DataFrame,
@@ -293,9 +283,7 @@ def match_product_nutrition(
     return df
 
 
-# ---------------------------------------------------------------------------
 # 5. OUTPUT GENERATION
-# ---------------------------------------------------------------------------
 
 def build_outputs(
     p3_mapping: pd.DataFrame,
@@ -441,9 +429,7 @@ def build_validation(outputs: dict, statistics: dict) -> dict:
     return checks
 
 
-# ---------------------------------------------------------------------------
 # MAIN
-# ---------------------------------------------------------------------------
 
 def main():
     log("Starting Phase 5 (v1.0.0 — Nutrition Integration)")
@@ -454,48 +440,34 @@ def main():
     STATISTICS_DIR.mkdir(parents=True, exist_ok=True)
     AUDIT_DIR.mkdir(parents=True, exist_ok=True)
 
-    # ------------------------------------------------------------------
     # 1. LOAD DATA
-    # ------------------------------------------------------------------
     log("Loading data ...")
     nutrition, _products, p3_mapping, p4_mapping = load_data()
 
-    # ------------------------------------------------------------------
     # 2. NUTRITION CLEANING
-    # ------------------------------------------------------------------
     nutrition_cleaned = clean_nutrition(nutrition)
 
-    # ------------------------------------------------------------------
     # 3. NUTRITION NORMALIZATION
-    # ------------------------------------------------------------------
     nutrition_per_100g = normalize_per_100g(nutrition_cleaned)
 
-    # ------------------------------------------------------------------
     # 4. PRODUCT ↔ NUTRITION MATCHING
-    # ------------------------------------------------------------------
     product_nutrition = match_product_nutrition(
         nutrition_per_100g, p3_mapping, p4_mapping
     )
 
-    # ------------------------------------------------------------------
     # 5. BUILD OUTPUTS
-    # ------------------------------------------------------------------
     outputs = build_outputs(
         p3_mapping, nutrition_cleaned, product_nutrition, nutrition_per_100g
     )
 
-    # ------------------------------------------------------------------
     # 6. STATISTICS & VALIDATION
-    # ------------------------------------------------------------------
     log("Building statistics ...")
     statistics = build_statistics(outputs)
 
     log("Building validation ...")
     validation = build_validation(outputs, statistics)
 
-    # ------------------------------------------------------------------
     # 7. SAVE OUTPUTS
-    # ------------------------------------------------------------------
     log("Saving outputs ...")
 
     for name, df in outputs.items():
@@ -536,9 +508,7 @@ def main():
     with open(STATISTICS_DIR / "phase5_statistics.json", "w") as f:
         json.dump(statistics, f, indent=2, default=str)
 
-    # ------------------------------------------------------------------
     # SUMMARY
-    # ------------------------------------------------------------------
     log("")
     log("=== PHASE 5 COMPLETE (v1.0.0) ===")
     log(f"Input:  {statistics['input']['nutrition_rows']} nutrition, {statistics['input']['products_rows']} products")

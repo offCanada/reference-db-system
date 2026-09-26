@@ -33,9 +33,7 @@ def validate_production():
 
     errors = []
 
-    # ---------------------------------------------------------
     # 1. Product-level uniqueness
-    # ---------------------------------------------------------
 
     for name, df in {
         "product_metadata": metadata,
@@ -50,23 +48,17 @@ def validate_production():
                 f"{name}: duplicate external_id values"
             )
 
-    # ---------------------------------------------------------
     # 2. Group-level uniqueness
-    # ---------------------------------------------------------
 
     if groups["group_id"].duplicated().any():
         errors.append("product_groups: duplicate group_id values")
 
-    # ---------------------------------------------------------
     # 3. Variant-level uniqueness
-    # ---------------------------------------------------------
 
     if variants["variant_id"].duplicated().any():
         errors.append("product_variants: duplicate variant_id values")
 
-    # ---------------------------------------------------------
     # 4. Product coverage
-    # ---------------------------------------------------------
 
     metadata_ids = set(metadata["external_id"])
     nutrition_ids = set(nutrition["external_id"])
@@ -85,9 +77,7 @@ def validate_production():
             f"Products missing from scores: {len(missing_scores)}"
         )
 
-    # ---------------------------------------------------------
     # 5. Group coverage
-    # ---------------------------------------------------------
 
     group_ids = set(groups["group_id"])
 
@@ -106,9 +96,7 @@ def validate_production():
                     f"{name}: {len(orphan_groups)} orphan group_id values"
                 )
 
-    # ---------------------------------------------------------
     # 6. Variant coverage
-    # ---------------------------------------------------------
 
     variant_ids = set(variants["variant_id"])
 
@@ -126,9 +114,7 @@ def validate_production():
                     f"{name}: {len(orphan_variants)} orphan variant_id values"
                 )
 
-    # ---------------------------------------------------------
     # 7. Basic row-count expectations
-    # ---------------------------------------------------------
 
     expected_counts = {
         "product_metadata": 4440,
@@ -146,9 +132,7 @@ def validate_production():
                 f"{name}: expected {expected} rows, found {actual}"
             )
 
-    # ---------------------------------------------------------
     # Final result
-    # ---------------------------------------------------------
 
     print("\n=== Production Validation ===")
 

@@ -50,9 +50,7 @@ def main():
     errors = []
     data = load_data()
 
-    # ---------------------------------------------------------
     # 1. Required files
-    # ---------------------------------------------------------
 
     missing_files = [
         name
@@ -65,9 +63,7 @@ def main():
             f"Missing files: {', '.join(missing_files)}"
         )
 
-    # ---------------------------------------------------------
     # 2. Print dataset sizes
-    # ---------------------------------------------------------
 
     print("\n--- Dataset Sizes ---")
 
@@ -76,9 +72,7 @@ def main():
             f"{name}: {len(df):,} rows × {len(df.columns)} columns"
         )
 
-    # ---------------------------------------------------------
     # 3. External ID coverage
-    # ---------------------------------------------------------
 
     print("\n--- External ID Coverage ---")
 
@@ -125,9 +119,7 @@ def main():
                 f"{name}: {len(extra)} unexpected external_id values"
             )
 
-    # ---------------------------------------------------------
     # 4. ID uniqueness
-    # ---------------------------------------------------------
 
     print("\n--- ID Uniqueness ---")
 
@@ -155,9 +147,7 @@ def main():
             errors,
         )
 
-    # ---------------------------------------------------------
     # 5. Group consistency
-    # ---------------------------------------------------------
 
     print("\n--- Group Consistency ---")
 
@@ -207,9 +197,7 @@ def main():
             f"Production contains {len(extra_production_groups)} extra groups"
         )
 
-    # ---------------------------------------------------------
     # 6. Variant consistency
-    # ---------------------------------------------------------
 
     print("\n--- Variant Consistency ---")
 
@@ -249,9 +237,7 @@ def main():
                 f"{name}: {len(orphaned)} orphan variant_id values"
             )
 
-    # ---------------------------------------------------------
     # 7. Production coverage
-    # ---------------------------------------------------------
 
     print("\n--- Production Coverage ---")
 
@@ -287,9 +273,7 @@ def main():
                 f"{len(missing)} missing products"
             )
 
-    # ---------------------------------------------------------
     # 8. Nutrition quality
-    # ---------------------------------------------------------
 
     print("\n--- Nutrition Quality ---")
 
@@ -306,9 +290,7 @@ def main():
             "P5 nutrition: missing nutrition_quality_status"
         )
 
-    # ---------------------------------------------------------
     # 9. Score eligibility
-    # ---------------------------------------------------------
 
     print("\n--- Score Eligibility ---")
 
@@ -325,9 +307,7 @@ def main():
             "P6 scores: missing score_eligibility"
         )
 
-    # ---------------------------------------------------------
     # 10. Final result
-    # ---------------------------------------------------------
 
     print("\n=== QA Result ===")
 

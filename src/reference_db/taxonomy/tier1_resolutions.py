@@ -15,19 +15,15 @@ Confidence: 0.90-0.95 (high, deterministic semantics).
 Rule names: snake_case, descriptive of the meaning.
 """
 
-# ---------------------------------------------------------------------------
 # Signature -> meaning decision (from the 114-product audit; see docs)
 #
 # We group by semantic phrase (regex) -> ReferenceCategory.
 # Multiple external_ids may share one regex; that is intended (same meaning).
-# ---------------------------------------------------------------------------
 
 MEANING_TIER0 = [
-    # -----------------------------------------------------------------------
     # Regression resolutions
     # These are intentionally narrow product-meaning rules for previously
     # stable products. They run before generic taxonomy matching.
-    # -----------------------------------------------------------------------
 
     (
         r"\boil\s+canola\s+.*\bextra\s+virgin\s+olive\b|\bcanola\s+.*olive\s+oil\b|\bolive\s+.*canola\s+oil\b",
@@ -527,11 +523,9 @@ MEANING_TIER0 = [
 TIER0_DISAMBIGUATION_RULES = MEANING_TIER0
 
 
-# ---------------------------------------------------------------------------
 # TIER0_NARROW_EXCLUSIONS (Phase-3 companion, semantic Tier-0 guard).
 # rule_name -> tuple of rejection regexes. taxonomy_rules.py uses this
 # so a colliding Tier-0 rule NEVER fires on any stable product.
-# ---------------------------------------------------------------------------
 
 TIER0_NARROW_EXCLUSIONS = {
     'muffins_bakery': (

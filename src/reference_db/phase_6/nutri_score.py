@@ -5,14 +5,12 @@ import pandas as pd
 ALGORITHM_VERSION = "Nutri-Score-2023"
 
 
-# ---------------------------------------------------------------------------
 # Nutri-Score 2023 — General Foods
 #
 # Source:
 # Santé publique France, updated Nutri-Score algorithm (2023)
 #
 # All values are per 100 g for solid foods.
-# ---------------------------------------------------------------------------
 
 
 # Negative component thresholds.

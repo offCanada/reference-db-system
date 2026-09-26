@@ -34,9 +34,7 @@ from pathlib import Path
 import pandas as pd
 from huggingface_hub import hf_hub_download
 
-# ---------------------------------------------------------------------------
 # Configuration
-# ---------------------------------------------------------------------------
 HF_REPO = "saraNour/compliments-brand"
 HF_FILE = "source_of_truth/products.parquet"
 HF_REPO_TYPE = "dataset"
@@ -53,9 +51,7 @@ def log(msg: str) -> None:
     print(f"[Phase1] {msg}")
 
 
-# ===========================================================================
 # A. STRING NORMALIZATION
-# ===========================================================================
 
 def normalize_whitespace(s):
     """Trim leading/trailing whitespace, collapse repeated internal whitespace."""
@@ -74,9 +70,7 @@ def empty_to_null(s):
     return None if s_str == "" else s_str
 
 
-# ===========================================================================
 # B. BRAND CLEANING
-# ===========================================================================
 
 def clean_brand(raw_brand):
     """
@@ -94,9 +88,7 @@ def clean_brand(raw_brand):
     return cleaned, raw
 
 
-# ===========================================================================
 # C. UPC VALIDATION
-# ===========================================================================
 
 def validate_upc(upc_val):
     """
@@ -170,9 +162,7 @@ def audit_upcs(df):
     }
 
 
-# ===========================================================================
 # D. EXTERNAL_ID VALIDATION
-# ===========================================================================
 
 def audit_external_ids(df):
     """Validate external_id field."""
@@ -186,9 +176,7 @@ def audit_external_ids(df):
     }
 
 
-# ===========================================================================
 # E. TITLE CLEANING
-# ===========================================================================
 
 def clean_title(raw_title):
     """
@@ -229,9 +217,7 @@ def audit_titles(df):
     }
 
 
-# ===========================================================================
 # F. SIZE FIELDS AUDIT
-# ===========================================================================
 
 def audit_sizes(df):
     """Audit size-related fields for consistency."""
@@ -280,9 +266,7 @@ def audit_sizes(df):
     }
 
 
-# ===========================================================================
 # G. NULL COLUMN HANDLING
-# ===========================================================================
 
 def identify_null_columns(df):
     """Identify columns that are 100% null."""
@@ -293,9 +277,7 @@ def identify_null_columns(df):
     return null_cols
 
 
-# ===========================================================================
 # H. DUPLICATE AUDIT
-# ===========================================================================
 
 def audit_duplicates(df):
     """Comprehensive duplicate audit."""
@@ -318,9 +300,7 @@ def audit_duplicates(df):
     }
 
 
-# ===========================================================================
 # MAIN
-# ===========================================================================
 
 def main():
     log("Starting Phase 1 (v2.0.0 — Data Quality Foundation)")
@@ -330,17 +310,13 @@ def main():
     VALIDATION_DIR.mkdir(parents=True, exist_ok=True)
     STATISTICS_DIR.mkdir(parents=True, exist_ok=True)
 
-    # ------------------------------------------------------------------
     # 1. LOAD
-    # ------------------------------------------------------------------
     log(f"Downloading {HF_REPO}/{HF_FILE} ...")
     path = hf_hub_download(HF_REPO, HF_FILE, repo_type=HF_REPO_TYPE)
     df_raw = pd.read_parquet(path)
     log(f"Loaded: {df_raw.shape[0]} rows, {df_raw.shape[1]} columns")
 
-    # ------------------------------------------------------------------
     # 2. SCHEMA VALIDATION
-    # ------------------------------------------------------------------
     log("Validating schema ...")
     EXPECTED_COLUMNS = [
         "upc", "external_id", "brand", "title", "price", "price_currency",
@@ -352,9 +328,7 @@ def main():
     assert len(df_raw) == 4440, f"Expected 4440 rows, got {len(df_raw)}"
     log("  Schema: PASS")
 
-    # ------------------------------------------------------------------
     # 3. AUDIT (before cleaning)
-    # ------------------------------------------------------------------
     log("Auditing raw data ...")
 
     null_info = {}
@@ -368,9 +342,7 @@ def main():
 
     dup_info_raw = audit_duplicates(df_raw)
     size_info_raw = audit_sizes(df_raw)
-    # ------------------------------------------------------------------
     # 4. CLEANING
-    # ------------------------------------------------------------------
     log("Cleaning data ...")
     df = df_raw.copy()
 
@@ -414,9 +386,7 @@ def main():
     log(f"  F. Dropping 100% null columns: {null_100pct}")
     df = df.drop(columns=null_100pct)
 
-    # ------------------------------------------------------------------
     # 5. REORDER COLUMNS
-    # ------------------------------------------------------------------
     log("Reordering columns ...")
     new_order = [
         "source_product_id",
@@ -429,9 +399,7 @@ def main():
     ]
     df = df[new_order]
 
-    # ------------------------------------------------------------------
     # 6. POST-CLEANING AUDIT
-    # ------------------------------------------------------------------
     log("Auditing cleaned data ...")
     dup_info_clean = audit_duplicates(df)
     upc_info_clean = audit_upcs(df)
@@ -442,9 +410,7 @@ def main():
         "distribution": {str(k): int(v) for k, v in df["brand_clean"].value_counts().items()},
     }
 
-    # ------------------------------------------------------------------
     # 7. STATISTICS
-    # ------------------------------------------------------------------
     statistics = {
         "version": VERSION,
         "timestamp": TIMESTAMP,
@@ -470,9 +436,7 @@ def main():
         "brand": brand_info_clean,
     }
 
-    # ------------------------------------------------------------------
     # 8. VALIDATION
-    # ------------------------------------------------------------------
     all_pass = True
     failures = []
 
@@ -506,9 +470,7 @@ def main():
         },
     }
 
-    # ------------------------------------------------------------------
     # 9. SAVE OUTPUTS
-    # ------------------------------------------------------------------
     log("Saving outputs ...")
     df.to_parquet(OUTPUT_DIR / "phase1_output.parquet", index=False)
     log(f"  Saved phase1_output.parquet ({df.shape[0]} rows, {df.shape[1]} cols)")
@@ -521,9 +483,7 @@ def main():
         json.dump(statistics, f, indent=2, default=str)
     log("  Saved phase1_statistics.json")
 
-    # ------------------------------------------------------------------
     # SUMMARY
-    # ------------------------------------------------------------------
     log("")
     log("=== PHASE 1 COMPLETE (v2.0.0) ===")
     log(f"Input:  {df_raw.shape[0]} rows, {df_raw.shape[1]} columns")

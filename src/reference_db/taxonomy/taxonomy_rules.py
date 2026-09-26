@@ -29,9 +29,7 @@ def normalize_text(text: str) -> str:
     return text
 
 
-# ---------------------------------------------------------------------------
 # Explicit disambiguation rules
-# ---------------------------------------------------------------------------
 #
 # These are product-level rules that override generic keyword matching.
 # They run after the semantic Tier-0 rules from tier1_resolutions.py.
@@ -137,9 +135,7 @@ DISAMBIGUATION_RULES = [
 ]
 
 
-# ---------------------------------------------------------------------------
 # Specific phrase rules
-# ---------------------------------------------------------------------------
 #
 # More specific product phrases run before generic keyword rules.
 #
@@ -418,9 +414,7 @@ SPECIFIC_PHRASE_RULES = [
 ]
 
 
-# ---------------------------------------------------------------------------
 # Generic category rules
-# ---------------------------------------------------------------------------
 
 CATEGORY_RULES = [
     (
@@ -952,9 +946,7 @@ def classify_taxonomy(product_name: str) -> TaxonomyMatch:
             candidates=(),
         )
 
-    # ------------------------------------------------------------------
     # Tier 0: semantic meaning-based disambiguation
-    # ------------------------------------------------------------------
     #
     # These rules were created from the Phase-3 conflict audit.
     # They intentionally run before all generic and specific rules.
@@ -999,9 +991,7 @@ def classify_taxonomy(product_name: str) -> TaxonomyMatch:
             candidates=(category.value,),
         )
 
-    # ------------------------------------------------------------------
     # Tier 1: explicit disambiguation rules
-    # ------------------------------------------------------------------
 
     for pattern, category, confidence, rule_name in DISAMBIGUATION_RULES:
         if re.search(pattern, text):
@@ -1024,9 +1014,7 @@ def classify_taxonomy(product_name: str) -> TaxonomyMatch:
                 candidates=(category.value,),
             )
 
-    # ------------------------------------------------------------------
     # Tier 2: specific product phrases
-    # ------------------------------------------------------------------
 
     for pattern, category, confidence, rule_name in SPECIFIC_PHRASE_RULES:
         if re.search(pattern, text):
@@ -1039,9 +1027,7 @@ def classify_taxonomy(product_name: str) -> TaxonomyMatch:
                 candidates=(category.value,),
             )
 
-    # ------------------------------------------------------------------
     # Tier 3: generic category evidence
-    # ------------------------------------------------------------------
 
     matches = []
 
@@ -1062,9 +1048,7 @@ def classify_taxonomy(product_name: str) -> TaxonomyMatch:
 
     categories = list(dict.fromkeys(category for category, _ in matches))
 
-    # ------------------------------------------------------------------
     # Tier 4: one unopposed category
-    # ------------------------------------------------------------------
 
     if len(categories) == 1:
         category = categories[0]
@@ -1079,9 +1063,7 @@ def classify_taxonomy(product_name: str) -> TaxonomyMatch:
             candidates=(category.value,),
         )
 
-    # ------------------------------------------------------------------
     # Tier 5: FROZEN precedence
-    # ------------------------------------------------------------------
     #
     # Frozen products dominate when FROZEN is one of exactly two
     # supporting categories.
@@ -1107,9 +1089,7 @@ def classify_taxonomy(product_name: str) -> TaxonomyMatch:
             other_candidates=(other.value,),
         )
 
-    # ------------------------------------------------------------------
     # Tier 6: genuine conflict
-    # ------------------------------------------------------------------
     #
     # Do not arbitrarily select a category.
     # Preserve ambiguity when multiple generic categories remain.
